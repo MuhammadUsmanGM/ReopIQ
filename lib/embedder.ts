@@ -1,6 +1,6 @@
 // lib/embedder.ts
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, TaskType } from "@google/generative-ai";
 import { EMBEDDING_BATCH_SIZE, EMBEDDING_MODEL } from "./constants";
 
 let genAI: GoogleGenerativeAI | null = null;
@@ -22,10 +22,11 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
     const batch = texts.slice(i, i + EMBEDDING_BATCH_SIZE);
     
     try {
-      // Use batchEmbedContents for efficiency
+      // Use batchEmbedContents for efficiency with specific task type
       const result = await model.batchEmbedContents({
         requests: batch.map((text) => ({
           content: { role: "user", parts: [{ text }] },
+          taskType: TaskType.RETRIEVAL_DOCUMENT,
         })),
       });
       
@@ -44,7 +45,10 @@ export async function embedQuery(query: string): Promise<number[]> {
   const model = getGenAI().getGenerativeModel({ model: EMBEDDING_MODEL });
   
   try {
-    const result = await model.embedContent(query);
+    const result = await model.embedContent({
+      content: { role: "user", parts: [{ text: query }] },
+      taskType: TaskType.RETRIEVAL_QUERY,
+    });
     return result.embedding.values;
   } catch (error) {
     console.error("Error embedding query:", error);
