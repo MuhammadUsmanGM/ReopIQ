@@ -6,6 +6,7 @@ import { RepoInput } from "@/components/RepoInput";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ProcessingScreen, Step } from "@/components/ProcessingScreen";
 import { Toaster, toast } from "react-hot-toast";
+import { ArrowRight } from "lucide-react";
 
 const INITIAL_STEPS: Step[] = [
   { id: "validating", label: "Security & Accessibility Check", status: "waiting" },
@@ -20,7 +21,20 @@ export default function Home() {
   const [repoName, setRepoName] = useState("");
   const [progress, setProgress] = useState(0);
   const [steps, setSteps] = useState<Step[]>(INITIAL_STEPS);
+  const [recentRepos, setRecentRepos] = useState<string[]>([]);
   const router = useRouter();
+
+  useEffect(() => {
+    // Load recent repos from local storage
+    const stored = localStorage.getItem("repoiq_recent");
+    if (stored) setRecentRepos(JSON.parse(stored));
+  }, []);
+
+  const saveToRecent = (repoId: string) => {
+    const updated = [repoId, ...recentRepos.filter(r => r !== repoId)].slice(0, 5);
+    setRecentRepos(updated);
+    localStorage.setItem("repoiq_recent", JSON.stringify(updated));
+  };
 
   const handleAnalyze = async (url: string) => {
     let toastId = "";
@@ -110,6 +124,7 @@ export default function Home() {
             updateProgress(event.step, currentIdx);
 
             if (event.step === "complete") {
+              saveToRecent(event.repo_id);
               toast.success("Neural link established! Data indexed.", {
                 className: "bg-primary text-black font-bold",
                 icon: "🚀",
@@ -176,9 +191,34 @@ export default function Home() {
         <ThemeToggle />
       </div>
 
-      <div className="w-full flex justify-center">
+      <div className="w-full flex flex-col items-center justify-center gap-12">
         {!isAnalyzing ? (
-          <RepoInput onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} />
+          <>
+            <RepoInput onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} />
+            
+            {recentRepos.length > 0 && (
+              <div className="w-full max-w-2xl animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
+                <div className="flex items-center gap-2 text-muted-foreground text-[10px] font-bold uppercase tracking-[0.2em] mb-4 pl-1">
+                  <span className="w-8 h-px bg-border" />
+                  Recent Explorations
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {recentRepos.map((repo) => (
+                    <button
+                      key={repo}
+                      onClick={() => router.push(`/chat/${encodeURIComponent(repo)}`)}
+                      className="flex items-center justify-between p-4 bg-card/40 hover:bg-card border border-border hover:border-primary/50 rounded-2xl transition-all group text-left"
+                    >
+                      <span className="text-sm font-medium truncate pr-4">{repo}</span>
+                      <div className="p-1.5 rounded-lg bg-muted text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                        <ArrowRight size={14} />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <ProcessingScreen steps={steps} progress={progress} repoName={repoName} />
         )}
