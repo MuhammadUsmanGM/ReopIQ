@@ -1,65 +1,90 @@
-import Image from "next/image";
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { RepoInput } from "@/components/RepoInput";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { ProcessingScreen, Step } from "@/components/ProcessingScreen";
+import { Toaster, toast } from "react-hot-toast";
+
+const INITIAL_STEPS: Step[] = [
+  { id: "fetching", label: "Fetching Repository Tree", status: "waiting" },
+  { id: "filtering", label: "Filtering Code Files", status: "waiting" },
+  { id: "chunking", label: "Semantic Chunking", status: "waiting" },
+  { id: "embedding", label: "Generating Vector Embeddings", status: "waiting" },
+];
 
 export default function Home() {
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [repoName, setRepoName] = useState("");
+  const [progress, setProgress] = useState(0);
+  const [steps, setSteps] = useState<Step[]>(INITIAL_STEPS);
+  const router = useRouter();
+
+  const handleAnalyze = async (url: string) => {
+    // Extract repo name from URL for display
+    try {
+      const name = url.split("/").pop() || "Repository";
+      setRepoName(name);
+      setIsAnalyzing(true);
+      
+      // Simulation logic for demonstration
+      // This will be replaced by SSE (Server-Sent Events) from /api/ingest
+      simulateProgress();
+      
+    } catch (error) {
+      toast.error("Invalid GitHub URL");
+    }
+  };
+
+  const simulateProgress = () => {
+    let currentProgress = 0;
+    const interval = setInterval(() => {
+      currentProgress += Math.random() * 5;
+      if (currentProgress >= 100) {
+        currentProgress = 100;
+        clearInterval(interval);
+        // router.push(`/chat/simulated-repo`);
+      }
+      setProgress(currentProgress);
+      
+      // Update steps based on progress
+      setSteps(prev => prev.map((step, idx) => {
+        const stepThreshold = (idx + 1) * 25;
+        if (currentProgress >= stepThreshold) return { ...step, status: "complete" };
+        if (currentProgress >= stepThreshold - 25) return { ...step, status: "processing" };
+        return step;
+      }));
+    }, 400);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main className="relative min-h-screen flex flex-col items-center justify-center bg-background overflow-x-hidden">
+      <Toaster position="bottom-center" />
+      
+      {/* Background Decor */}
+      <div className="absolute top-0 left-0 w-full h-full -z-10 opacity-30 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-amber-500/10 blur-[120px] rounded-full animate-pulse delay-700" />
+      </div>
+
+      {/* Header / Theme Toggle */}
+      <div className="absolute top-6 right-6">
+        <ThemeToggle />
+      </div>
+
+      <div className="w-full flex justify-center">
+        {!isAnalyzing ? (
+          <RepoInput onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} />
+        ) : (
+          <ProcessingScreen steps={steps} progress={progress} repoName={repoName} />
+        )}
+      </div>
+
+      {/* Footer / Info */}
+      <footer className="absolute bottom-8 text-muted-foreground text-sm font-medium">
+        &copy; {new Date().getFullYear()} REPOIQ. Powered by Gemini 2.0 Flash.
+      </footer>
+    </main>
   );
 }
