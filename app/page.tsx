@@ -8,10 +8,11 @@ import { ProcessingScreen, Step } from "@/components/ProcessingScreen";
 import { Toaster, toast } from "react-hot-toast";
 
 const INITIAL_STEPS: Step[] = [
-  { id: "fetching", label: "Fetching Repository Tree", status: "waiting" },
-  { id: "filtering", label: "Filtering Code Files", status: "waiting" },
-  { id: "chunking", label: "Semantic Chunking", status: "waiting" },
-  { id: "embedding", label: "Generating Vector Embeddings", status: "waiting" },
+  { id: "validating", label: "Security & Accessibility Check", status: "waiting" },
+  { id: "fetching", label: "Mapping Repository Structure", status: "waiting" },
+  { id: "filtering", label: "AI File Selection", status: "waiting" },
+  { id: "chunking", label: "Neural Code Tokenization", status: "waiting" },
+  { id: "embedding", label: "Vector Indexing (Qdrant)", status: "waiting" },
 ];
 
 export default function Home() {
@@ -23,8 +24,25 @@ export default function Home() {
 
   const handleAnalyze = async (url: string) => {
     try {
-      // 1. Initial State
-      const name = url.split("/").pop()?.replace(".git", "") || "Repository";
+      // 1. Parse URL to get repoId
+      const cleanUrl = url.replace(/^https?:\/\//, "").replace(/^github\.com\//, "");
+      const parts = cleanUrl.split("/");
+      if (parts.length < 2) throw new Error("Invalid GitHub URL");
+      const repoId = `${parts[0]}/${parts[1]}`.toLowerCase();
+      
+      // 2. Check Cache First (The "Instant" Hack)
+      const checkRes = await fetch(`/api/repo/${encodeURIComponent(repoId)}`);
+      if (checkRes.ok) {
+        const data = await checkRes.json();
+        if (data.status === "ready") {
+          toast.success("Using existing index", { icon: "⚡" });
+          router.push(`/chat/${encodeURIComponent(repoId)}`);
+          return;
+        }
+      }
+
+      // 3. New Repo? Start Visual Ingestion
+      const name = parts[1].replace(".git", "");
       setRepoName(name);
       setIsAnalyzing(true);
       setProgress(5);
@@ -69,13 +87,13 @@ export default function Home() {
             }
 
             // Update UI based on step
-            const stepOrder = ["fetching", "filtering", "chunking", "embedding", "complete"];
+            const stepOrder = ["validating", "fetching", "filtering", "chunking", "embedding", "complete"];
             const currentIdx = stepOrder.indexOf(event.step);
             
             updateProgress(event.step, currentIdx);
 
             if (event.step === "complete") {
-              toast.success("Analysis complete!");
+              toast.success("Identity established. Redirecting to chat...", { icon: "🔥" });
               setTimeout(() => {
                 router.push(`/chat/${encodeURIComponent(event.repo_id)}`);
               }, 1500);
@@ -96,10 +114,11 @@ export default function Home() {
   const updateProgress = (step: string, index: number) => {
     // Basic progress mapping
     const progressMap: Record<string, number> = {
-      fetching: 15,
-      filtering: 35,
-      chunking: 60,
-      embedding: 85,
+      validating: 10,
+      fetching: 25,
+      filtering: 45,
+      chunking: 70,
+      embedding: 90,
       complete: 100
     };
 

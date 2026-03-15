@@ -26,24 +26,25 @@ export async function POST(req: NextRequest) {
       };
 
       try {
-        // 1. Parse GitHub URL
+        // 1. Parse & Validate
+        sendStep({ step: "validating", message: "Verifying repository identity..." });
         const { owner, repo } = parseGithubUrl(github_url);
         const repoId = `${owner}/${repo}`.toLowerCase();
         
         // 2. Fetch Tree
-        sendStep({ step: "fetching", message: "Fetching repository structure..." });
+        sendStep({ step: "fetching", message: "Cloning repository metadata..." });
         const tree = await getRepoTree(owner, repo);
         
         // 3. Filter Files
-        sendStep({ step: "filtering", message: "Identifying relevant code files..." });
+        sendStep({ step: "filtering", message: "Selecting code logic for indexing..." });
         const validFiles = filterValidFiles(tree);
         
         if (validFiles.length === 0) {
           throw new Error("No supported code files found in the repository.");
         }
 
-        // 4. Fetch Content
-        sendStep({ step: "fetching", message: `Downloading ${validFiles.length} files...` });
+        // 4. Content Fetching (Part of filtering/ingesting)
+        sendStep({ step: "filtering", message: `Ingesting ${validFiles.length} source files...` });
         const filesWithContent = await fetchFilesInParallel(owner, repo, validFiles);
         
         // 5. Chunking

@@ -1,6 +1,7 @@
 // types/index.ts
 
 export type ProcessingStep =
+  | "validating"
   | "fetching"
   | "filtering"
   | "chunking"
