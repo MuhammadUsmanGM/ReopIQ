@@ -1,7 +1,7 @@
 // app/api/repo/[repoId]/route.ts
 
 import { NextRequest } from "next/server";
-import { getQdrantClient, deleteCollection } from "@/lib/qdrant";
+import { getQdrantClient, deleteCollection, getCollectionName } from "@/lib/qdrant";
 import { QDRANT_VECTOR_SIZE } from "@/lib/constants";
 
 export async function GET(
@@ -13,7 +13,7 @@ export async function GET(
 
   const client = getQdrantClient();
   try {
-    const info = await client.getCollection(decodedRepoId);
+    const info = await client.getCollection(getCollectionName(decodedRepoId));
     const existingSize = (info.config.params.vectors as any).size;
 
     if (existingSize !== QDRANT_VECTOR_SIZE) {

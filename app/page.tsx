@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { RepoInput } from "@/components/RepoInput";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -24,6 +24,7 @@ export default function Home() {
   const [steps, setSteps] = useState<Step[]>(INITIAL_STEPS);
   const [recentRepos, setRecentRepos] = useState<string[]>([]);
   const router = useRouter();
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     // Load recent repos from local storage
@@ -38,14 +39,21 @@ export default function Home() {
   };
 
   const handleAnalyze = async (url: string) => {
+    // Abort any previous ingestion stream
+    abortControllerRef.current?.abort();
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     let toastId: string | number = "";
     try {
-      // 1. Parse URL to get repoId
+      // 1. Parse & validate URL
       const cleanUrl = url.replace(/^https?:\/\//, "").replace(/^github\.com\//, "");
-      const parts = cleanUrl.split("/");
-      if (parts.length < 2) throw new Error("Please enter a valid GitHub repository URL");
-      const repoId = `${parts[0]}/${parts[1]}`.toLowerCase();
-      
+      const parts = cleanUrl.split("/").filter(Boolean);
+      if (parts.length < 2 || !/^[a-zA-Z0-9._-]+$/.test(parts[0]) || !/^[a-zA-Z0-9._-]+$/.test(parts[1])) {
+        throw new Error("Please enter a valid GitHub repository URL (e.g. github.com/owner/repo)");
+      }
+      const repoId = `${parts[0]}/${parts[1].replace(/\.git$/, "")}`.toLowerCase();
+
       toastId = toast.loading("Checking neural index...", {
         style: {
           borderRadius: '16px',
@@ -56,13 +64,15 @@ export default function Home() {
       });
 
       // 2. Proactive UI Shift
-      const name = parts[1].replace(".git", "");
+      const name = parts[1].replace(/\.git$/, "");
       setRepoName(name);
       setSteps(INITIAL_STEPS);
       setProgress(5);
 
-      // 3. Check Cache First (The "Instant" Hack)
-      const checkRes = await fetch(`/api/repo/${encodeURIComponent(repoId)}`);
+      // 3. Check Cache First
+      const checkRes = await fetch(`/api/repo/${encodeURIComponent(repoId)}`, {
+        signal: abortController.signal,
+      });
       if (checkRes.ok) {
         const data = await checkRes.json();
         if (data.status === "ready") {
@@ -75,18 +85,18 @@ export default function Home() {
         }
       }
 
-      // 4. Cache Miss or Mismatch? Enter Neural Engagement
+      // 4. Cache Miss — Start Ingestion
       setIsAnalyzing(true);
       toast.dismiss(toastId);
       toast.success("Identity verified. Starting neural mapping...", {
         duration: 4000
       });
 
-      // 4. Start Ingestion Stream
       const response = await fetch("/api/ingest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ github_url: url }),
+        signal: abortController.signal,
       });
 
       if (!response.ok) {
@@ -99,6 +109,7 @@ export default function Home() {
 
       const decoder = new TextDecoder();
       let buffer = "";
+      let streamError: string | null = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -110,17 +121,18 @@ export default function Home() {
 
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
-          
+
           try {
             const event: any = JSON.parse(line.replace("data: ", ""));
-            
+
             if (event.step === "error") {
-              throw new Error(event.message);
+              streamError = event.message || "An unknown error occurred";
+              break;
             }
 
             const stepOrder = ["validating", "fetching", "filtering", "chunking", "embedding", "complete"];
             const currentIdx = stepOrder.indexOf(event.step);
-            
+
             updateProgress(event.step, currentIdx);
 
             if (event.step === "complete") {
@@ -133,12 +145,23 @@ export default function Home() {
               }, 1500);
             }
           } catch (e) {
-            console.error("Neural Stream Parse Error:", e);
+            console.error("SSE parse error:", e);
           }
         }
+
+        // Break out of the read loop if we got a stream error
+        if (streamError) break;
+      }
+
+      // If the stream sent an error event, throw it to the outer catch
+      if (streamError) {
+        throw new Error(streamError);
       }
     } catch (error: any) {
-      console.error("Critical Ingestion Failure:", error);
+      // Ignore abort errors (user navigated away or re-submitted)
+      if (error.name === "AbortError") return;
+
+      console.error("Ingestion Failure:", error);
       toast.error(error.message || "A neural link interruption occurred", {
         id: toastId,
         style: {

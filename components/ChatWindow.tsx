@@ -35,7 +35,13 @@ export function ChatWindow({ repoId }: ChatWindowProps) {
 
     const userMessage: ChatMessage = { role: "user", content: text, timestamp: new Date() };
     const botPlaceholder: ChatMessage = { role: "bot", content: "", timestamp: new Date() };
-    
+
+    // Capture history from current messages BEFORE state update
+    const historyForApi = messages.map(m => ({
+      role: m.role === "user" ? "user" : "assistant",
+      content: m.content,
+    }));
+
     setMessages(prev => [...prev, userMessage, botPlaceholder]);
     setInput("");
     setIsLoading(true);
@@ -48,7 +54,7 @@ export function ChatWindow({ repoId }: ChatWindowProps) {
         body: JSON.stringify({
           repo_id: repoId,
           message: text,
-          history: messages.slice(0, -1).map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.content })),
+          history: historyForApi,
         }),
       });
 
@@ -80,16 +86,23 @@ export function ChatWindow({ repoId }: ChatWindowProps) {
 
             if (event === "message") {
               setMessages(prev => {
-                const last = [...prev];
-                const botMsg = last[last.length - 1];
-                botMsg.content += data;
-                return last;
+                const updated = [...prev];
+                const lastIdx = updated.length - 1;
+                updated[lastIdx] = {
+                  ...updated[lastIdx],
+                  content: updated[lastIdx].content + data,
+                };
+                return updated;
               });
             } else if (event === "sources") {
               setMessages(prev => {
-                const last = [...prev];
-                last[last.length - 1].sources = data;
-                return last;
+                const updated = [...prev];
+                const lastIdx = updated.length - 1;
+                updated[lastIdx] = {
+                  ...updated[lastIdx],
+                  sources: data,
+                };
+                return updated;
               });
             } else if (event === "error") {
               setError(data);

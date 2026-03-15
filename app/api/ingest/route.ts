@@ -39,8 +39,11 @@ export async function POST(req: NextRequest) {
         if (filesWithContent.length === 0) {
           throw new Error("No supported code files found in the repository.");
         }
-        
-        // 5. Chunking
+
+        // 3. Filtering Complete
+        sendStep({ step: "filtering", message: `AI file selection complete. ${filesWithContent.length} code files identified.` });
+
+        // 4. Chunking
         sendStep({ step: "chunking", message: "Splitting code into searchable chunks..." });
         const chunks = chunkFiles(filesWithContent);
         

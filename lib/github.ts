@@ -112,31 +112,40 @@ export async function fetchFilesInParallel(owner: string, repo: string, files: G
 
 export async function fetchRepoAsZip(owner: string, repo: string): Promise<{ path: string; content: string }[]> {
   const token = process.env.GITHUB_TOKEN;
-  const headers: HeadersInit = {};
+  const headers: HeadersInit = {
+    "Accept": "application/vnd.github.v3+json",
+  };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  // Get default branch
-  const repoData = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers }).then(res => res.json());
+  // Get default branch with proper error handling
+  const repoResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
+  if (!repoResponse.ok) {
+    if (repoResponse.status === 404) throw new Error("Repository not found or is private.");
+    if (repoResponse.status === 403) throw new Error("GitHub API rate limit exceeded.");
+    throw new Error(`GitHub API error: ${repoResponse.statusText}`);
+  }
+  const repoData = await repoResponse.json();
   const defaultBranch = repoData.default_branch || "main";
 
-  const response = await fetch(`https://github.com/${owner}/${repo}/archive/refs/heads/${defaultBranch}.zip`, { headers });
-  if (!response.ok) throw new Error("Failed to download repository ZIP");
+  const response = await fetch(`https://github.com/${owner}/${repo}/archive/refs/heads/${defaultBranch}.zip`);
+  if (!response.ok) throw new Error("Failed to download repository ZIP.");
 
   const buffer = await response.arrayBuffer();
   const zip = await JSZip.loadAsync(buffer);
-  
+
   const results: { path: string; content: string }[] = [];
   let fileCount = 0;
 
-  // JSZip zipball prepends owner/repo-branch to paths
-  const rootFolder = zip.filter((path) => path.split("/").length === 1 && zip.files[path].dir)[0];
+  // Derive root prefix from first ZIP entry (GitHub zips always have repo-branch/ prefix)
+  const firstPath = Object.keys(zip.files)[0];
+  const rootPrefix = firstPath ? firstPath.split("/")[0] + "/" : "";
 
   for (const [path, file] of Object.entries(zip.files)) {
     if (file.dir) continue;
     if (fileCount >= MAX_FILES) break;
 
-    // Remove the root folder from path
-    const cleanPath = rootFolder ? path.replace(rootFolder.name, "") : path;
+    // Remove the root folder prefix from path
+    const cleanPath = rootPrefix ? path.replace(rootPrefix, "") : path;
     const lowerPath = cleanPath.toLowerCase();
 
     // Extension check

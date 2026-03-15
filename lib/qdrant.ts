@@ -21,7 +21,7 @@ export function getQdrantClient() {
   return client;
 }
 
-function getCollectionName(repoId: string) {
+export function getCollectionName(repoId: string) {
   // Collection names must be alphanumeric/underscores/dashes
   const safeId = repoId.replace(/[^a-zA-Z0-9_-]/g, "_");
   return `repo_${safeId}`;
