@@ -7,6 +7,18 @@ import { cn } from "@/lib/utils";
 
 export function ThemeToggle({ className }: { className?: string }) {
   const { setTheme, theme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+
+  // Avoid hydration mismatch by waiting until mounted
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className={cn("flex items-center gap-1 bg-muted/20 p-1 rounded-full border border-border w-[100px] h-[34px]", className)} />
+    );
+  }
 
   return (
     <div className={cn("flex items-center gap-1 bg-muted/20 p-1 rounded-full border border-border", className)}>
