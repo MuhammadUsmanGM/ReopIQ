@@ -7,7 +7,7 @@ import { embedTexts } from "@/lib/embedder";
 import { createCollection, upsertPoints, collectionExists } from "@/lib/qdrant";
 import { QdrantPoint, SSEProgressEvent } from "@/types";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
