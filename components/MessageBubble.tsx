@@ -92,6 +92,6 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
