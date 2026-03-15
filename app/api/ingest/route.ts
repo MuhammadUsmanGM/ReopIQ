@@ -1,7 +1,7 @@
 // app/api/ingest/route.ts
 
 import { NextRequest } from "next/server";
-import { parseGithubUrl, getRepoTree, filterValidFiles, fetchFilesInParallel } from "@/lib/github";
+import { parseGithubUrl, fetchRepoAsZip } from "@/lib/github";
 import { chunkFiles } from "@/lib/chunker";
 import { embedTexts } from "@/lib/embedder";
 import { createCollection, upsertPoints, collectionExists } from "@/lib/qdrant";
@@ -31,34 +31,28 @@ export async function POST(req: NextRequest) {
         const { owner, repo } = parseGithubUrl(github_url);
         const repoId = `${owner}/${repo}`.toLowerCase();
         
-        // 2. Fetch Tree
-        sendStep({ step: "fetching", message: "Cloning repository metadata..." });
-        const tree = await getRepoTree(owner, repo);
+        // 2. High-Speed ZIP Ingestion
+        sendStep({ step: "fetching", message: "Initiating high-speed neural download..." });
+        const filesWithContent = await fetchRepoAsZip(owner, repo);
         
-        // 3. Filter Files
-        sendStep({ step: "filtering", message: "Selecting code logic for indexing..." });
-        const validFiles = filterValidFiles(tree);
-        
-        if (validFiles.length === 0) {
+        if (filesWithContent.length === 0) {
           throw new Error("No supported code files found in the repository.");
         }
-
-        // 4. Content Fetching (Part of filtering/ingesting)
-        sendStep({ step: "filtering", message: `Ingesting ${validFiles.length} source files...` });
-        const filesWithContent = await fetchFilesInParallel(owner, repo, validFiles);
         
         // 5. Chunking
         sendStep({ step: "chunking", message: "Splitting code into searchable chunks..." });
         const chunks = chunkFiles(filesWithContent);
         
-        // 6. Embedding with Live Progress
-        sendStep({ step: "embedding", message: `Neural processing initiated for ${chunks.length} segments...` });
+        // 6. Embedding with High-Speed Local Neural Engine
+        sendStep({ step: "embedding", message: "Starting High-Speed Local Neural Alignment..." });
         const chunkContents = chunks.map(c => c.content);
         const vectors = await embedTexts(chunkContents, (current, total) => {
-          sendStep({ 
-            step: "embedding", 
-            message: `Aligning neural vectors: ${current} / ${total} segments complete` 
-          });
+          if (current % 10 === 0 || current === total) {
+            sendStep({ 
+              step: "embedding", 
+              message: `Neural Aligned: ${current} / ${total} segments (Rate Limit: Unlimited)` 
+            });
+          }
         });
         
         // 7. Qdrant Setup
@@ -89,7 +83,7 @@ export async function POST(req: NextRequest) {
         sendStep({ 
           step: "complete", 
           repo_id: repoId,
-          file_count: validFiles.length,
+          file_count: filesWithContent.length,
           chunk_count: chunks.length
         });
         

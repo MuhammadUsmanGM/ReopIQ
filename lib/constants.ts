@@ -21,9 +21,9 @@ export const CHUNK_SIZE = 1000;
 export const CHUNK_OVERLAP = 200;
 export const EMBEDDING_BATCH_SIZE = 100;
 export const GITHUB_FETCH_CONCURRENCY = 20;
-export const QDRANT_VECTOR_SIZE = 3072; // gemini-embedding-001 default size
+export const QDRANT_VECTOR_SIZE = 384; // Local all-MiniLM-L6-v2 size
 export const RAG_TOP_K = 5;
 export const QDRANT_UPSERT_BATCH_SIZE = 100;
 
-export const GEMINI_MODEL = "gemini-2.5-flash-lite";
-export const EMBEDDING_MODEL = "gemini-embedding-001";
+export const GEMINI_MODEL = "gemini-2.0-flash-lite"; // Primary reasoning model
+export const EMBEDDING_MODEL = "Xenova/all-MiniLM-L6-v2"; // Local embedding model

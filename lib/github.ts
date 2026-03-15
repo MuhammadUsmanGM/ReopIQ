@@ -1,6 +1,5 @@
-// lib/github.ts
-
 import { ALLOWED_EXTENSIONS, SKIP_DIRS, MAX_FILES, MAX_FILE_SIZE_BYTES, GITHUB_FETCH_CONCURRENCY } from "./constants";
+import JSZip from "jszip";
 
 export interface GitTreeItem {
   path: string;
@@ -106,6 +105,55 @@ export async function fetchFilesInParallel(owner: string, repo: string, files: G
     );
     
     results.push(...(batchResults.filter(r => r !== null) as { path: string; content: string }[]));
+  }
+
+  return results;
+}
+
+export async function fetchRepoAsZip(owner: string, repo: string): Promise<{ path: string; content: string }[]> {
+  const token = process.env.GITHUB_TOKEN;
+  const headers: HeadersInit = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  // Get default branch
+  const repoData = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers }).then(res => res.json());
+  const defaultBranch = repoData.default_branch || "main";
+
+  const response = await fetch(`https://github.com/${owner}/${repo}/archive/refs/heads/${defaultBranch}.zip`, { headers });
+  if (!response.ok) throw new Error("Failed to download repository ZIP");
+
+  const buffer = await response.arrayBuffer();
+  const zip = await JSZip.loadAsync(buffer);
+  
+  const results: { path: string; content: string }[] = [];
+  let fileCount = 0;
+
+  // JSZip zipball prepends owner/repo-branch to paths
+  const rootFolder = zip.filter((path) => path.split("/").length === 1 && zip.files[path].dir)[0];
+
+  for (const [path, file] of Object.entries(zip.files)) {
+    if (file.dir) continue;
+    if (fileCount >= MAX_FILES) break;
+
+    // Remove the root folder from path
+    const cleanPath = rootFolder ? path.replace(rootFolder, "") : path;
+    const lowerPath = cleanPath.toLowerCase();
+
+    // Extension check
+    const hasAllowedExtension = Array.from(ALLOWED_EXTENSIONS).some(ext => lowerPath.endsWith(ext));
+    if (!hasAllowedExtension) continue;
+
+    // Skip dirs
+    const isInSkipDir = Array.from(SKIP_DIRS).some(dir => 
+      lowerPath.startsWith(`${dir}/`) || lowerPath.includes(`/${dir}/`)
+    );
+    if (isInSkipDir) continue;
+
+    const content = await file.async("string");
+    if (content.length > MAX_FILE_SIZE_BYTES) continue;
+
+    results.push({ path: cleanPath, content });
+    fileCount++;
   }
 
   return results;
