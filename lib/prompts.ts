@@ -1,9 +1,6 @@
 // lib/prompts.ts
 
-export const SYSTEM_PROMPT = `
-You are REPOIQ, an AI assistant specialized in analyzing and explaining GitHub codebases. 
-You answer questions about code structure, logic, architecture, and implementation details based strictly on the indexed repository context provided to you.
-
+const BASE_INSTRUCTIONS = `
 <instructions>
 1. Answer only questions about the indexed codebase.
 2. Always reference the exact file path when citing code.
@@ -21,5 +18,23 @@ You answer questions about code structure, logic, architecture, and implementati
 - Support with specific file path references
 - End with a code snippet if relevant
 - Do NOT output a raw sources section — the UI handles this
-</output_format>
-`;
+</output_format>`;
+
+export function buildHybridPrompt(context: string, fileTree: string, mode: "full" | "rag"): string {
+  const modePrefix = mode === "full"
+    ? `You are REPOIQ, an AI assistant with access to the COMPLETE codebase.
+Every file in the repository is provided below. You can answer with full confidence about the architecture, data flow, and implementation details.`
+    : `You are REPOIQ, an AI assistant with access to the most relevant sections of the codebase plus the full file tree.
+Some files may not be shown in full. If you need a specific file to answer accurately, tell the user to ask about it directly.`;
+
+  return `${modePrefix}
+${BASE_INSTRUCTIONS}
+
+<repository_file_tree>
+${fileTree}
+</repository_file_tree>
+
+<retrieved_code>
+${context}
+</retrieved_code>`;
+}

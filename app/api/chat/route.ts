@@ -2,8 +2,8 @@
 
 import { NextRequest } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { retrieveChunks, buildContext, buildSystemPrompt } from "@/lib/rag";
-import { SYSTEM_PROMPT } from "@/lib/prompts";
+import { retrieveHybrid, buildContext } from "@/lib/rag";
+import { buildHybridPrompt } from "@/lib/prompts";
 import { GEMINI_MODEL } from "@/lib/constants";
 import { getGoogleApiKey } from "@/lib/env";
 
@@ -18,16 +18,18 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // 1. Retrieve Context
-    const chunks = await retrieveChunks(repo_id, message);
+    // 1. Hybrid retrieval — full context for small repos, RAG for large
+    const { chunks, fileTree, mode, sources } = await retrieveHybrid(repo_id, message);
     const context = buildContext(chunks);
-    const sources = Array.from(new Set(chunks.map(c => c.filePath)));
 
-    // 2. Initialize Gemini
+    // 2. Build mode-aware prompt
+    const systemPrompt = buildHybridPrompt(context, fileTree, mode);
+
+    // 3. Initialize Gemini
     const genAI = new GoogleGenerativeAI(getGoogleApiKey());
-    const model = genAI.getGenerativeModel({ 
-      model: GEMINI_MODEL, 
-      systemInstruction: `${SYSTEM_PROMPT}\n\n<retrieved_context>\n${context}\n</retrieved_context>`
+    const model = genAI.getGenerativeModel({
+      model: GEMINI_MODEL,
+      systemInstruction: systemPrompt,
     });
 
     const encoder = new TextEncoder();
@@ -38,7 +40,7 @@ export async function POST(req: NextRequest) {
         };
 
         try {
-          // Send sources immediately
+          // Send sources + mode info immediately
           sendEvent("sources", sources);
 
           // Prepare history for Gemini

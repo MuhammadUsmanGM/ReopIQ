@@ -1,8 +1,8 @@
 // lib/qdrant.ts
 
 import { QdrantClient } from "@qdrant/js-client-rest";
-import { QdrantPoint } from "@/types";
-import { QDRANT_VECTOR_SIZE, QDRANT_UPSERT_BATCH_SIZE } from "./constants";
+import { QdrantPoint, RepoMetadata, RepoChunk } from "@/types";
+import { QDRANT_VECTOR_SIZE, QDRANT_UPSERT_BATCH_SIZE, METADATA_POINT_ID } from "./constants";
 import { getQdrantConfig } from "./env";
 
 function sanitizeUtf8(str: string): string {
@@ -128,4 +128,103 @@ export async function getCollectionInfo(repoId: string) {
   } catch (error) {
     return null;
   }
+}
+
+export async function storeRepoMetadata(repoId: string, metadata: RepoMetadata) {
+  const collectionName = getCollectionName(repoId);
+  // Use a tiny non-zero vector to avoid Cosine distance division-by-zero
+  const dummyVector = Array(QDRANT_VECTOR_SIZE).fill(0.0001);
+
+  await getQdrantClient().upsert(collectionName, {
+    wait: true,
+    points: [{
+      id: METADATA_POINT_ID,
+      vector: dummyVector,
+      payload: metadata as unknown as Record<string, unknown>,
+    }],
+  });
+}
+
+export async function getRepoMetadata(repoId: string): Promise<RepoMetadata | null> {
+  const collectionName = getCollectionName(repoId);
+  try {
+    const results = await getQdrantClient().retrieve(collectionName, {
+      ids: [METADATA_POINT_ID],
+      with_payload: true,
+    });
+    if (results.length === 0) return null;
+    return results[0].payload as unknown as RepoMetadata;
+  } catch (error) {
+    return null;
+  }
+}
+
+export async function getAllChunks(repoId: string): Promise<RepoChunk[]> {
+  const collectionName = getCollectionName(repoId);
+  const chunks: RepoChunk[] = [];
+  let offset: string | number | null | undefined = undefined;
+
+  // Scroll through all points, excluding the metadata point
+  while (true) {
+    const result = await getQdrantClient().scroll(collectionName, {
+      limit: 100,
+      offset,
+      with_payload: true,
+      filter: {
+        must_not: [
+          { key: "type", match: { value: "metadata" } },
+        ],
+      },
+    });
+
+    for (const point of result.points) {
+      const payload = point.payload as any;
+      chunks.push({
+        content: payload.content,
+        filePath: payload.filePath,
+        language: payload.language,
+      });
+    }
+
+    if (!result.next_page_offset) break;
+    offset = result.next_page_offset as string | number | undefined;
+  }
+
+  return chunks;
+}
+
+export async function fetchFileChunks(repoId: string, filePath: string): Promise<RepoChunk[]> {
+  const collectionName = getCollectionName(repoId);
+  const chunks: RepoChunk[] = [];
+  let offset: string | number | null | undefined = undefined;
+
+  while (true) {
+    const result = await getQdrantClient().scroll(collectionName, {
+      limit: 100,
+      offset,
+      with_payload: true,
+      filter: {
+        must: [
+          { key: "filePath", match: { value: filePath } },
+        ],
+        must_not: [
+          { key: "type", match: { value: "metadata" } },
+        ],
+      },
+    });
+
+    for (const point of result.points) {
+      const payload = point.payload as any;
+      chunks.push({
+        content: payload.content,
+        filePath: payload.filePath,
+        language: payload.language,
+      });
+    }
+
+    if (!result.next_page_offset) break;
+    offset = result.next_page_offset as string | number | undefined;
+  }
+
+  return chunks;
 }

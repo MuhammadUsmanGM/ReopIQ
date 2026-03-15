@@ -5,7 +5,8 @@ import crypto from "crypto";
 import { parseGithubUrl, fetchRepoAsZip } from "@/lib/github";
 import { chunkFiles } from "@/lib/chunker";
 import { embedTexts } from "@/lib/embedder";
-import { createCollection, upsertPoints, collectionExists } from "@/lib/qdrant";
+import { createCollection, upsertPoints, storeRepoMetadata } from "@/lib/qdrant";
+import { estimateTokens } from "@/lib/constants";
 import { QdrantPoint, SSEProgressEvent } from "@/types";
 
 export const maxDuration = 300;
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
   }
 
   const encoder = new TextEncoder();
-  
+
   const stream = new ReadableStream({
     async start(controller) {
       const sendStep = (event: SSEProgressEvent) => {
@@ -31,19 +32,22 @@ export async function POST(req: NextRequest) {
         sendStep({ step: "validating", message: "Verifying repository identity..." });
         const { owner, repo } = parseGithubUrl(github_url);
         const repoId = `${owner}/${repo}`.toLowerCase();
-        
-        // 2. High-Speed ZIP Ingestion
-        sendStep({ step: "fetching", message: "Initiating high-speed neural download..." });
+
+        // 2. Download repo as ZIP
+        sendStep({ step: "fetching", message: "Downloading repository..." });
         const filesWithContent = await fetchRepoAsZip(owner, repo);
-        
+
         if (filesWithContent.length === 0) {
           throw new Error("No supported code files found in the repository.");
         }
 
-        // 3. Filtering Complete
-        sendStep({ step: "filtering", message: `AI file selection complete. ${filesWithContent.length} code files identified.` });
+        // 3. Filtering complete
+        sendStep({ step: "filtering", message: `${filesWithContent.length} code files identified.` });
 
-        // 4. Chunking
+        // 4. Build file tree
+        const fileTree = filesWithContent.map(f => f.path).sort().join("\n");
+
+        // 5. Chunking
         sendStep({ step: "chunking", message: "Splitting code into searchable chunks..." });
         const chunks = chunkFiles(filesWithContent);
 
@@ -51,20 +55,24 @@ export async function POST(req: NextRequest) {
           throw new Error("No indexable content found. Files may be empty or too small to chunk.");
         }
 
-        // 5. Embedding with High-Speed Local Neural Engine
-        sendStep({ step: "embedding", message: "Starting High-Speed Local Neural Alignment..." });
+        // 6. Calculate token count
+        const totalTokens = estimateTokens(chunks.map(c => c.content));
+        sendStep({ step: "chunking", message: `${chunks.length} chunks created (${Math.round(totalTokens / 1000)}K tokens)` });
+
+        // 7. Embedding
+        sendStep({ step: "embedding", message: "Generating vector embeddings..." });
         const chunkContents = chunks.map(c => c.content);
         const vectors = await embedTexts(chunkContents, (current, total) => {
           if (current % 10 === 0 || current === total) {
-            sendStep({ 
-              step: "embedding", 
-              message: `Neural Aligned: ${current} / ${total} segments (Rate Limit: Unlimited)` 
+            sendStep({
+              step: "embedding",
+              message: `Embedded: ${current} / ${total} chunks`
             });
           }
         });
-        
-        // 7. Qdrant Setup
-        sendStep({ step: "embedding", message: "Preparing vector database..." });
+
+        // 8. Create collection + store vectors
+        sendStep({ step: "embedding", message: "Storing in vector database..." });
         await createCollection(repoId);
 
         const points: QdrantPoint[] = chunks.map((chunk, i) => ({
@@ -73,33 +81,40 @@ export async function POST(req: NextRequest) {
           payload: {
             content: chunk.content,
             filePath: chunk.filePath,
-            language: chunk.language
+            language: chunk.language,
           }
         }));
 
-        sendStep({ step: "embedding", message: "Storing vectors in Qdrant Cloud..." });
         await upsertPoints(repoId, points, (current, total) => {
-          sendStep({ 
-            step: "embedding", 
-            message: `Neural storage: ${current} / ${total} vectors anchored` 
+          sendStep({
+            step: "embedding",
+            message: `Stored: ${current} / ${total} vectors`
           });
         });
 
-        // 8. Complete
-        sendStep({ 
-          step: "complete", 
+        // 9. Store repo metadata (file tree + token count)
+        await storeRepoMetadata(repoId, {
+          type: "metadata",
+          totalTokens,
+          fileTree,
+          fileCount: filesWithContent.length,
+          chunkCount: chunks.length,
+        });
+
+        // 10. Complete
+        sendStep({
+          step: "complete",
           repo_id: repoId,
           file_count: filesWithContent.length,
-          chunk_count: chunks.length
+          chunk_count: chunks.length,
         });
-        
+
         controller.close();
       } catch (error: any) {
-        // Send a clean error message to avoid breaking SSE with large objects
-        const cleanMessage = error.status === 400 
-          ? "Neural metadata mismatch (Qdrant 400). Re-indexing required."
+        const cleanMessage = error.status === 400
+          ? "Database metadata mismatch. Re-indexing required."
           : (error.message || "An unknown error occurred");
-          
+
         sendStep({ step: "error", message: cleanMessage });
         controller.close();
       }

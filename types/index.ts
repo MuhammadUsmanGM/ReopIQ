@@ -50,11 +50,27 @@ export interface QdrantPoint {
     content: string;
     filePath: string;
     language: string;
+    type?: string;
   };
+}
+
+export interface RepoMetadata {
+  type: "metadata";
+  totalTokens: number;
+  fileTree: string;
+  fileCount: number;
+  chunkCount: number;
+}
+
+export interface HybridRetrievalResult {
+  chunks: RepoChunk[];
+  fileTree: string;
+  mode: "full" | "rag";
+  sources: string[];
 }
 
 export interface RepoInfo {
   repoId: string;
   chunkCount: number;
-  status: "ready" | "not_found";
+  status: "ready" | "not_found" | "reindex_required";
 }
