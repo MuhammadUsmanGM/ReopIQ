@@ -37,7 +37,7 @@ export default function Home() {
   };
 
   const handleAnalyze = async (url: string) => {
-    let toastId = "";
+    let toastId: string | number = "";
     try {
       // 1. Parse URL to get repoId
       const cleanUrl = url.replace(/^https?:\/\//, "").replace(/^github\.com\//, "");
