@@ -22,40 +22,94 @@ export default function Home() {
   const router = useRouter();
 
   const handleAnalyze = async (url: string) => {
-    // Extract repo name from URL for display
     try {
-      const name = url.split("/").pop() || "Repository";
+      // 1. Initial State
+      const name = url.split("/").pop()?.replace(".git", "") || "Repository";
       setRepoName(name);
       setIsAnalyzing(true);
-      
-      // Simulation logic for demonstration
-      // This will be replaced by SSE (Server-Sent Events) from /api/ingest
-      simulateProgress();
-      
-    } catch (error) {
-      toast.error("Invalid GitHub URL");
+      setProgress(5);
+      setSteps(INITIAL_STEPS);
+
+      // 2. Start Ingestion
+      const response = await fetch("/api/ingest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ github_url: url }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to start ingestion");
+      }
+
+      // 3. Parse Stream
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("Connection failed");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          
+          try {
+            const event: any = JSON.parse(line.replace("data: ", ""));
+            
+            if (event.step === "error") {
+              throw new Error(event.message);
+            }
+
+            // Update UI based on step
+            const stepOrder = ["fetching", "filtering", "chunking", "embedding", "complete"];
+            const currentIdx = stepOrder.indexOf(event.step);
+            
+            updateProgress(event.step, currentIdx);
+
+            if (event.step === "complete") {
+              toast.success("Analysis complete!");
+              setTimeout(() => {
+                router.push(`/chat/${encodeURIComponent(event.repo_id)}`);
+              }, 1500);
+            }
+          } catch (e) {
+            console.error("Parse Error:", e);
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error("Analyze Error:", error);
+      toast.error(error.message || "Analysis failed");
+      setIsAnalyzing(false);
+      setSteps(INITIAL_STEPS);
     }
   };
 
-  const simulateProgress = () => {
-    let currentProgress = 0;
-    const interval = setInterval(() => {
-      currentProgress += Math.random() * 5;
-      if (currentProgress >= 100) {
-        currentProgress = 100;
-        clearInterval(interval);
-        // router.push(`/chat/simulated-repo`);
-      }
-      setProgress(currentProgress);
-      
-      // Update steps based on progress
-      setSteps(prev => prev.map((step, idx) => {
-        const stepThreshold = (idx + 1) * 25;
-        if (currentProgress >= stepThreshold) return { ...step, status: "complete" };
-        if (currentProgress >= stepThreshold - 25) return { ...step, status: "processing" };
-        return step;
-      }));
-    }, 400);
+  const updateProgress = (step: string, index: number) => {
+    // Basic progress mapping
+    const progressMap: Record<string, number> = {
+      fetching: 15,
+      filtering: 35,
+      chunking: 60,
+      embedding: 85,
+      complete: 100
+    };
+
+    if (progressMap[step]) setProgress(progressMap[step]);
+
+    setSteps(prev => prev.map((s, idx) => {
+      if (idx < index) return { ...s, status: "complete" as const };
+      if (idx === index) return { ...s, status: "processing" as const };
+      return s;
+    }));
   };
 
   return (

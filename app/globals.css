@@ -86,4 +86,16 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+  
+  pre {
+    @apply bg-muted/30 p-4 rounded-xl overflow-x-auto my-3 border border-border/50 font-mono text-sm;
+  }
+  
+  code {
+    @apply bg-muted/30 px-1.5 py-0.5 rounded text-primary font-mono text-[0.9em];
+  }
+
+  pre code {
+    @apply bg-transparent p-0 text-foreground;
+  }
 }
