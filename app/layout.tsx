@@ -16,7 +16,7 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   title: "RepoIQ | Neural Codebase Explorer",
-  description: "AI-powered repository analysis and conversational indexer using RAG and Gemini 2.0.",
+  description: "AI-powered repository analysis and conversational indexer using advanced RAG technology.",
   icons: {
     icon: "/logo.webp",
   },

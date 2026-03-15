@@ -94,9 +94,9 @@ export function RepoInput({ onAnalyze, isAnalyzing }: RepoInputProps) {
       {/* Technical Status Indicators */}
       <div className="flex flex-wrap justify-center gap-x-16 gap-y-6 mt-24">
         {[
-          { icon: Search, label: "Semantic Retrieval" },
-          { icon: Shield, label: "Encrypted Context" },
-          { icon: Zap, label: "Flash 2.5 Inference" }
+          { icon: Search, label: "Semantic Context" },
+          { icon: Shield, label: "Neural Security" },
+          { icon: Zap, label: "AI Logic Pipeline" }
         ].map((feat, i) => (
           <div key={i} className="flex items-center gap-4 group cursor-help">
             <div className="h-8 w-[1px] bg-white/5 group-hover:bg-primary/50 transition-colors duration-500" />
