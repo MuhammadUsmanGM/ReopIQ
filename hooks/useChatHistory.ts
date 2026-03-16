@@ -3,7 +3,7 @@ import { ChatMessage } from "@/types";
 const MAX_MESSAGES_PER_REPO = 50;
 
 function getStorageKey(repoId: string): string {
-  return `repoiq_chat_${repoId}`;
+  return `codelens_chat_${repoId}`;
 }
 
 export function loadChatHistory(repoId: string): ChatMessage[] {

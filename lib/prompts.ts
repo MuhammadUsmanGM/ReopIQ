@@ -25,9 +25,9 @@ const BASE_INSTRUCTIONS = `
 
 export function buildHybridPrompt(context: string, fileTree: string, mode: "full" | "rag"): string {
   const modePrefix = mode === "full"
-    ? `You are REPOIQ, an AI assistant with access to the COMPLETE codebase.
+    ? `You are CODELENS, an AI assistant with access to the COMPLETE codebase.
 Every file in the repository is provided below. You can answer with full confidence about the architecture, data flow, and implementation details.`
-    : `You are REPOIQ, an AI assistant with access to the most relevant sections of the codebase plus the full file tree.
+    : `You are CODELENS, an AI assistant with access to the most relevant sections of the codebase plus the full file tree.
 Some files may not be shown in full. If you need a specific file to answer accurately, tell the user to ask about it directly.`;
 
   return `${modePrefix}

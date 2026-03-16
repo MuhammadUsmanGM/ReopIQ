@@ -15,21 +15,21 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "RepoIQ | Neural Codebase Explorer",
-  description: "AI-powered repository analysis and conversational indexer using advanced RAG technology.",
+  title: "CodeLens | Neural Codebase Explorer",
+  description: "Advanced AI-powered repository analysis and conversational indexer for premium engineering teams.",
   icons: {
     icon: "/logo.webp",
   },
   openGraph: {
-    title: "RepoIQ | Neural Codebase Explorer",
-    description: "AI-powered repository analysis and conversational indexer using advanced RAG technology.",
+    title: "CodeLens | Neural Codebase Explorer",
+    description: "Advanced AI-powered repository analysis and conversational indexer for premium engineering teams.",
     type: "website",
     images: ["/logo.webp"],
   },
   twitter: {
     card: "summary",
-    title: "RepoIQ | Neural Codebase Explorer",
-    description: "AI-powered repository analysis and conversational indexer using advanced RAG technology.",
+    title: "CodeLens | Neural Codebase Explorer",
+    description: "Advanced AI-powered repository analysis and conversational indexer for premium engineering teams.",
   },
   robots: {
     index: true,

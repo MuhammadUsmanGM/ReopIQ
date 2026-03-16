@@ -28,7 +28,7 @@ export function RepoInput({ onAnalyze, isAnalyzing }: RepoInputProps) {
         <div className="relative p-1 bg-gradient-to-br from-white/10 via-white/5 to-transparent rounded-[2rem] md:rounded-[3rem] border border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.3)]">
           <Image
             src="/logo.webp"
-            alt="RepoIQ Logo"
+            alt="CodeLens Logo"
             width={120}
             height={120}
             className="rounded-[1.8rem] md:rounded-[2.8rem] grayscale-[10%] group-hover:grayscale-0 transition-all duration-1000 brightness-110 shadow-inner w-[100px] h-[100px] md:w-[160px] md:h-[160px]"

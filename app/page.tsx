@@ -28,14 +28,14 @@ export default function Home() {
 
   useEffect(() => {
     // Load recent repos from local storage
-    const stored = localStorage.getItem("repoiq_recent");
+    const stored = localStorage.getItem("codelens_recent");
     if (stored) setRecentRepos(JSON.parse(stored));
   }, []);
 
   const saveToRecent = (repoId: string) => {
     setRecentRepos(prev => {
       const updated = [repoId, ...prev.filter(r => r !== repoId)].slice(0, 5);
-      localStorage.setItem("repoiq_recent", JSON.stringify(updated));
+      localStorage.setItem("codelens_recent", JSON.stringify(updated));
       return updated;
     });
   };
@@ -290,7 +290,11 @@ export default function Home() {
               </div>
               
               <div className="flex flex-col items-center gap-2 opacity-30">
-                <span className="text-[10px] font-bold tracking-[0.3em] uppercase">© {new Date().getFullYear()} REPOIQ • Neural Codebase Explorer</span>
+                <span className="text-[10px] font-bold tracking-[0.3em] uppercase flex items-center gap-2">
+                  © {new Date().getFullYear()} CODELENS 
+                  <span className="px-1 py-0.5 bg-primary text-black text-[8px] font-black rounded-sm leading-none">PRO</span>
+                  • Neural Codebase Explorer
+                </span>
                 <span className="text-[9px] font-medium tracking-[0.1em] uppercase">Privacy Focused • Performance Driven</span>
               </div>
             </footer>

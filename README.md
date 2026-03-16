@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="./public/logo.webp" alt="RepoIQ Logo" width="180" height="180" style="border-radius: 40px; margin-bottom: 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.3);" />
+<img src="./public/logo.webp" alt="CodeLens Logo" width="180" height="180" style="border-radius: 40px; margin-bottom: 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.3);" />
 
-# REPOIQ
+# CODELENS
 ### The Neural Bridge Between Developer & Codebase
 
 [![Neural Architecture](https://img.shields.io/badge/Architecture-Neural_RAG-amber?style=for-the-badge&logo=brain&logoColor=white)]()
@@ -10,7 +10,7 @@
 [![Performance](https://img.shields.io/badge/Performance-Vector_Accelerated-black?style=for-the-badge&logo=qdrant&logoColor=FF4B4B)]()
 [![Status](https://img.shields.io/badge/Status-Operational-00FF00?style=for-the-badge)]()
 
-**RepoIQ is not just a tool; it is a cognitive layer for software engineering.** By synthesizing vast amounts of repository data into a neural index, it enables developers to transcend traditional keyword search and engage in meaningful, semantic dialogue with their own creation.
+**CodeLens is not just a tool; it is a cognitive layer for software engineering.** By synthesizing vast amounts of repository data into a neural index, it enables developers to transcend traditional keyword search and engage in meaningful, semantic dialogue with their own creation.
 
 </div>
 
@@ -18,10 +18,10 @@
 
 ## 🛰 The Vision
 
-In an era of exponentially growing complexity, the bottleneck for innovation is no longer *writing* code, but *comprehending* it. RepoIQ was engineered to dissolve this barrier. It serves as an **Architecture Autopilot**, providing a high-fidelity mental map of even the most dense repositories.
+In an era of exponentially growing complexity, the bottleneck for innovation is no longer *writing* code, but *comprehending* it. CodeLens was engineered to dissolve this barrier. It serves as an **Architecture Autopilot**, providing a high-fidelity mental map of even the most dense repositories.
 
 ### 🧠 The Intelligence Core
-RepoIQ operates on a sophisticated **Neural RAG (Retrieval-Augmented Generation)** pipeline. Unlike standard LLMs that "hallucinate" based on general knowledge, RepoIQ grounds every response in the objective truth of your specific codebase. 
+CodeLens operates on a sophisticated **Neural RAG (Retrieval-Augmented Generation)** pipeline. Unlike standard LLMs that "hallucinate" based on general knowledge, CodeLens grounds every response in the objective truth of your specific codebase. 
 
 - **Semantic Synthesis**: Understands the *intent* behind the logic, not just the syntax.
 - **Contextual Anchoring**: Every insight is linked directly to the relevant source file, ensuring transparency and trust.
@@ -32,10 +32,10 @@ RepoIQ operates on a sophisticated **Neural RAG (Retrieval-Augmented Generation)
 ## 💎 Capabilities
 
 ### ⚡ Architectural Discovery
-Instantaneously map out the structural integrity and logic flow of a repository. From onboarding new developers to auditing complex legacy systems, RepoIQ provides the high-level perspective required for strategic decision-making.
+Instantaneously map out the structural integrity and logic flow of a repository. From onboarding new developers to auditing complex legacy systems, CodeLens provides the high-level perspective required for strategic decision-making.
 
 ### 🛡 Neural Security
-Engineered with a "Security-First" ethos. RepoIQ operates with read-only permissions, ensuring your codebase's integrity is never compromised while providing deep analytical insights.
+Engineered with a "Security-First" ethos. CodeLens operates with read-only permissions, ensuring your codebase's integrity is never compromised while providing deep analytical insights.
 
 ### 🔍 Conversational Logic
 Query your codebase like you would a senior architect. 
@@ -47,7 +47,7 @@ Query your codebase like you would a senior architect.
 
 ## ⚙️ The Ecosystem
 
-RepoIQ represents a convergence of state-of-the-art technologies, orchestrating a seamless flow from raw code to neural intelligence.
+CodeLens represents a convergence of state-of-the-art technologies, orchestrating a seamless flow from raw code to neural intelligence.
 
 | Pillar | Technology | Role |
 | :--- | :--- | :--- |
@@ -62,7 +62,7 @@ RepoIQ represents a convergence of state-of-the-art technologies, orchestrating 
 
 **Privacy Focused.** **Performance Driven.** **Developer Centric.**
 
-RepoIQ is designed for the modern engineer who demands both depth and speed. It is a commitment to reducing cognitive load and empowering developers to focus on what truly matters: **Creation.**
+CodeLens is designed for the modern engineer who demands both depth and speed. It is a commitment to reducing cognitive load and empowering developers to focus on what truly matters: **Creation.**
 
 ---
 

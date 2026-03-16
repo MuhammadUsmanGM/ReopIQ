@@ -226,7 +226,7 @@ export function ChatWindow({ repoId }: ChatWindowProps) {
         </form>
         <div className="flex items-center justify-center gap-3 mt-3">
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold opacity-50">
-            RepoIQ can make mistakes. Verify important information.
+            CodeLens can make mistakes. Verify important information.
           </p>
           {messages.length > 0 && (
             <button
