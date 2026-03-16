@@ -290,10 +290,8 @@ export default function Home() {
               </div>
               
               <div className="flex flex-col items-center gap-2 opacity-30">
-                <span className="text-[10px] font-bold tracking-[0.3em] uppercase flex items-center gap-2">
-                  © {new Date().getFullYear()} CODELENS 
-                  <span className="px-1 py-0.5 bg-primary text-black text-[8px] font-black rounded-sm leading-none">PRO</span>
-                  • Neural Codebase Explorer
+                <span className="text-[10px] font-bold tracking-[0.3em] uppercase">
+                  © {new Date().getFullYear()} CODELENS • Neural Codebase Explorer
                 </span>
                 <span className="text-[9px] font-medium tracking-[0.1em] uppercase">Privacy Focused • Performance Driven</span>
               </div>
