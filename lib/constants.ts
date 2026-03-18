@@ -45,9 +45,9 @@ export const MAX_FILES = 1500;
 export const MAX_FILE_SIZE_BYTES = 100_000;    // 100KB
 export const CHUNK_SIZE = 1000;
 export const CHUNK_OVERLAP = 200;
-export const EMBEDDING_BATCH_SIZE = 100; // Google API max per batch
+export const EMBEDDING_BATCH_SIZE = 32;
 export const GITHUB_FETCH_CONCURRENCY = 20;
-export const QDRANT_VECTOR_SIZE = 768; // jina-embeddings-v2-base-code size
+export const QDRANT_VECTOR_SIZE = 768; // gemini-embedding-001 with MRL dimensionality
 export const RAG_TOP_K = 15;
 export const RAG_CANDIDATE_MULTIPLIER = 2; // Fetch this many more candidates for re-ranking
 export const FULL_CONTEXT_TOKEN_THRESHOLD = 80_000; // Below this = send full codebase
@@ -55,7 +55,7 @@ export const METADATA_POINT_ID = 999_999_999; // Reserved Qdrant point ID for re
 export const QDRANT_UPSERT_BATCH_SIZE = 100;
 
 export const GEMINI_MODEL = "gemini-2.5-flash-lite"; // Primary reasoning model
-export const EMBEDDING_MODEL = "text-embedding-004"; // Google free embedding model (768-dim)
+export const EMBEDDING_MODEL = "Xenova/jina-embeddings-v2-base-code"; // Local code-aware embedding model
 
 /** Rough token estimate: ~4 characters per token */
 export function estimateTokens(texts: string[]): number {

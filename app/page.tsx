@@ -6,7 +6,8 @@ import { RepoInput } from "@/components/RepoInput";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ProcessingScreen, Step } from "@/components/ProcessingScreen";
 import { Toaster, toast } from "sonner";
-import { ArrowRight, Github, Linkedin, Database } from "lucide-react";
+import { SettingsModal } from "@/components/SettingsModal";
+import { ArrowRight, Github, Linkedin, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const INITIAL_STEPS: Step[] = [
@@ -23,6 +24,7 @@ export default function Home() {
   const [progress, setProgress] = useState(0);
   const [steps, setSteps] = useState<Step[]>(INITIAL_STEPS);
   const [recentRepos, setRecentRepos] = useState<string[]>([]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const router = useRouter();
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -187,11 +189,7 @@ export default function Home() {
               toast.success("Neural link established! Data indexed.", {
                 duration: 5000
               });
-              setIsAnalyzing(false);
-              setSteps(INITIAL_STEPS);
-              setTimeout(() => {
-                router.push(`/chat/${encodeURIComponent(event.repo_id)}`);
-              }, 1500);
+              router.push(`/chat/${encodeURIComponent(event.repo_id)}`);
             }
           } catch (e) {
             // JSON parse error on SSE event — skip malformed event
@@ -267,8 +265,18 @@ export default function Home() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-amber-500/5 blur-[100px] rounded-full delay-1000 animate-pulse" />
       </div>
 
+      {/* Settings Modal */}
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
       {/* Header */}
-      <div className="absolute top-0 right-0 p-8 z-50">
+      <div className="absolute top-0 right-0 p-8 z-50 flex items-center gap-3">
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="p-2 rounded-full border border-border bg-muted/20 hover:bg-muted/40 text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+          title="Settings"
+        >
+          <Settings size={16} />
+        </button>
         <ThemeToggle />
       </div>
 

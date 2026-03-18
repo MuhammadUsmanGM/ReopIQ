@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Database, Trash2, Home, AlertTriangle, X, Loader2 } from "lucide-react";
+import { ArrowLeft, Database, Trash2, Home, AlertTriangle, X, Loader2, Settings } from "lucide-react";
 import { ChatWindow } from "@/components/ChatWindow";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { SettingsModal } from "@/components/SettingsModal";
 import { RepoInfo } from "@/types";
 import { Toaster, toast } from "sonner";
 import { clearChatHistory } from "@/hooks/useChatHistory";
@@ -18,6 +19,7 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     const fetchRepoInfo = async () => {
@@ -74,6 +76,7 @@ export default function ChatPage() {
 
   return (
     <div className="h-screen w-full flex flex-col bg-background overflow-hidden relative">
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <Toaster 
         position="top-center" 
         visibleToasts={3} 
@@ -102,6 +105,13 @@ export default function ChatPage() {
         </div>
 
         <div className="flex items-center gap-1 md:gap-3 shrink-0 ml-2">
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="p-1.5 md:p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+            title="Settings"
+          >
+            <Settings className="w-[18px] h-[18px] md:w-5 md:h-5" />
+          </button>
           <ThemeToggle />
           <button
             onClick={() => setShowDeleteModal(true)}
