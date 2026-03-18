@@ -1,14 +1,25 @@
-import { pipeline } from "@xenova/transformers";
+import { pipeline, env } from "@xenova/transformers";
 import { EMBEDDING_MODEL, EMBEDDING_BATCH_SIZE } from "./constants";
-import { loadCodeLensEnv } from "./env";
+import { loadCodeLensEnv, getHfToken } from "./env";
 
 let extractor: any = null;
 
 async function getExtractor() {
   if (!extractor) {
-    // Ensuring the latest env is loaded into process.env before initialization.
-    // Transformers.js automatically picks up process.env.HF_TOKEN on the server.
     loadCodeLensEnv();
+    const token = getHfToken();
+
+    // Force authenticated requests if a token is present
+    if (token) {
+      // @ts-ignore - Directly override fetchInit to pass headers
+      env.fetchInit = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+      // Ensure we allow remote model fetching
+      env.allowRemoteModels = true;
+    }
 
     extractor = await pipeline("feature-extraction", EMBEDDING_MODEL, {
       quantized: true,
