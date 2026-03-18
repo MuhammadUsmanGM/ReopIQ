@@ -41,22 +41,38 @@ export async function POST(req: NextRequest) {
 
       try {
         // 1. Parse & Validate (supports GitHub, GitLab, Bitbucket)
-        sendStep({ step: "validating", message: "Detecting platform & verifying repository..." });
+        sendStep({ step: "validating", message: "Detecting platform & verifying repository...", percent: 2 });
         const parsed = parseRepoUrl(github_url);
         const repoId = buildRepoId(parsed);
         const platformLabel = parsed.platform.charAt(0).toUpperCase() + parsed.platform.slice(1);
+        sendStep({ step: "validating", message: `${platformLabel} repository: ${parsed.owner}/${parsed.repo}`, percent: 5 });
 
         // 2. Download repo files
         const refLabel = parsed.ref ? ` (${parsed.ref})` : "";
-        sendStep({ step: "fetching", message: `Downloading from ${platformLabel}${refLabel}...` });
-        const filesWithContent = await fetchRepoFiles(parsed);
+        sendStep({ step: "fetching", message: `Downloading from ${platformLabel}${refLabel}...`, percent: 10 });
+        const { files: filesWithContent, stats } = await fetchRepoFiles(parsed);
 
         if (filesWithContent.length === 0) {
           throw new Error("No supported code files found in the repository.");
         }
 
-        // 3. Filtering complete
-        sendStep({ step: "filtering", message: `${filesWithContent.length} code files identified.` });
+        // 3. Filtering complete — show detailed skip breakdown
+        const skipParts: string[] = [];
+        if (stats.skippedUnsupported > 0) skipParts.push(`${stats.skippedUnsupported} unsupported type`);
+        if (stats.skippedLarge > 0) skipParts.push(`${stats.skippedLarge} too large (>100KB)`);
+        if (stats.skippedDir > 0) skipParts.push(`${stats.skippedDir} in excluded dirs`);
+        if (stats.truncatedByLimit > 0) skipParts.push(`${stats.truncatedByLimit} over file limit`);
+        const skipDetail = skipParts.length > 0 ? `Skipped: ${skipParts.join(", ")}` : undefined;
+
+        sendStep({
+          step: "filtering",
+          message: `${filesWithContent.length} of ${stats.totalInZip} files selected for indexing.`,
+          detail: skipDetail,
+          skipped_large: stats.skippedLarge,
+          skipped_unsupported: stats.skippedUnsupported,
+          skipped_dir: stats.skippedDir,
+          percent: 30,
+        });
 
         // 4. Build file tree + hashes for current snapshot
         const fileTree = filesWithContent.map(f => f.path).sort().join("\n");
@@ -82,7 +98,6 @@ export async function POST(req: NextRequest) {
         let filesToDelete: string[] = [];
 
         if (isIncremental) {
-          // Determine changed, added, and removed files
           const changedOrNew = filesWithContent.filter(f => {
             const prevHash = previousHashes[f.path];
             return !prevHash || prevHash !== currentHashes[f.path];
@@ -91,7 +106,7 @@ export async function POST(req: NextRequest) {
           filesToProcess = changedOrNew;
 
           if (filesToProcess.length === 0 && filesToDelete.length === 0) {
-            sendStep({ step: "embedding", message: "No changes detected — index is up to date." });
+            sendStep({ step: "embedding", message: "No changes detected — index is up to date.", percent: 100 });
             sendStep({
               step: "complete",
               repo_id: repoId,
@@ -102,16 +117,19 @@ export async function POST(req: NextRequest) {
             return;
           }
 
+          const added = changedOrNew.filter(f => !previousHashes[f.path]).length;
+          const changed = changedOrNew.length - added;
           sendStep({
             step: "filtering",
-            message: `Incremental: ${filesToProcess.length} changed/new, ${filesToDelete.length} removed.`,
+            message: `Incremental update: ${added} new, ${changed} changed, ${filesToDelete.length} removed.`,
+            percent: 35,
           });
         } else {
           filesToProcess = filesWithContent;
         }
 
         // 6. Chunking (AST-aware structural chunking)
-        sendStep({ step: "chunking", message: "Structural code analysis & chunking..." });
+        sendStep({ step: "chunking", message: "Analyzing code structure & splitting into chunks...", percent: 40 });
         const chunks = chunkFilesStructural(filesToProcess);
 
         if (chunks.length === 0 && filesToDelete.length === 0) {
@@ -119,33 +137,37 @@ export async function POST(req: NextRequest) {
         }
 
         const totalTokens = estimateTokens(filesWithContent.map(f => f.content));
-        sendStep({ step: "chunking", message: `${chunks.length} chunks created (${Math.round(totalTokens / 1000)}K tokens)` });
+        sendStep({
+          step: "chunking",
+          message: `${chunks.length} chunks created (${Math.round(totalTokens / 1000)}K tokens).`,
+          percent: 50,
+        });
 
         // 7. Embedding
         if (chunks.length > 0) {
-          sendStep({ step: "embedding", message: "Generating vector embeddings..." });
+          sendStep({ step: "embedding", message: "Loading embedding model...", percent: 52 });
           const chunkContents = chunks.map(c => c.content);
           const vectors = await embedTexts(chunkContents, (current, total) => {
-            if (current % 10 === 0 || current === total) {
-              sendStep({
-                step: "embedding",
-                message: `Embedded: ${current} / ${total} chunks`,
-              });
-            }
+            // Embedding phase spans percent 55-85
+            const embedPercent = 55 + Math.round((current / total) * 30);
+            sendStep({
+              step: "embedding",
+              message: `Embedding chunks: ${current} / ${total}`,
+              percent: embedPercent,
+            });
           });
 
           // 8. Create collection (full) or update incrementally
           if (!isIncremental) {
-            sendStep({ step: "embedding", message: "Creating vector collection..." });
+            sendStep({ step: "embedding", message: "Creating vector collection...", percent: 87 });
             await createCollection(repoId);
           } else {
-            // Delete vectors for changed/removed files
             const pathsToRemove = [
               ...filesToProcess.map(f => f.path),
               ...filesToDelete,
             ];
             if (pathsToRemove.length > 0) {
-              sendStep({ step: "embedding", message: `Removing ${pathsToRemove.length} stale file indexes...` });
+              sendStep({ step: "embedding", message: `Removing ${pathsToRemove.length} stale file indexes...`, percent: 87 });
               for (const fp of pathsToRemove) {
                 await deletePointsByFile(repoId, fp);
               }
@@ -165,13 +187,14 @@ export async function POST(req: NextRequest) {
           }));
 
           await upsertPoints(repoId, points, (current, total) => {
+            const storePercent = 88 + Math.round((current / total) * 10);
             sendStep({
               step: "embedding",
-              message: `Stored: ${current} / ${total} vectors`,
+              message: `Storing vectors: ${current} / ${total}`,
+              percent: storePercent,
             });
           });
         } else if (filesToDelete.length > 0) {
-          // Only deletions, no new chunks
           for (const fp of filesToDelete) {
             await deletePointsByFile(repoId, fp);
           }
@@ -193,6 +216,7 @@ export async function POST(req: NextRequest) {
           repo_id: repoId,
           file_count: filesWithContent.length,
           chunk_count: chunks.length,
+          percent: 100,
         });
 
         controller.close();

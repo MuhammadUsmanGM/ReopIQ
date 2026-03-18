@@ -20,6 +20,17 @@ export interface FetchedFile {
   content: string;
 }
 
+export interface FetchResult {
+  files: FetchedFile[];
+  stats: {
+    totalInZip: number;
+    skippedUnsupported: number;
+    skippedLarge: number;
+    skippedDir: number;
+    truncatedByLimit: number;  // Files that didn't make the MAX_FILES cut
+  };
+}
+
 // ---------------------------------------------------------------------------
 // URL Parsing
 // ---------------------------------------------------------------------------
@@ -148,9 +159,9 @@ function isValidFile(path: string): boolean {
 // ZIP-based fetch (shared logic with platform-specific download URL)
 // ---------------------------------------------------------------------------
 
-async function fetchAndExtractZip(zipUrl: string, authHeaders: HeadersInit): Promise<FetchedFile[]> {
+async function fetchAndExtractZip(zipUrl: string, authHeaders: HeadersInit): Promise<FetchResult | null> {
   const response = await fetch(zipUrl, { headers: authHeaders });
-  if (!response.ok) return []; // Caller handles fallback/error
+  if (!response.ok) return null; // Caller handles fallback/error
 
   const contentLength = response.headers.get("content-length");
   if (contentLength && parseInt(contentLength, 10) > 200 * 1024 * 1024) {
@@ -168,12 +179,27 @@ async function fetchAndExtractZip(zipUrl: string, authHeaders: HeadersInit): Pro
   const firstPath = Object.keys(zip.files)[0];
   const rootPrefix = firstPath ? firstPath.split("/")[0] + "/" : "";
 
+  let totalInZip = 0;
+  let skippedUnsupported = 0;
+  let skippedDir = 0;
+  let skippedLarge = 0;
+
   const candidates: { path: string; zipFile: JSZip.JSZipObject }[] = [];
 
   for (const [path, file] of Object.entries(zip.files)) {
     if (file.dir) continue;
+    totalInZip++;
     const cleanPath = rootPrefix ? path.replace(rootPrefix, "") : path;
-    if (!isValidFile(cleanPath)) continue;
+
+    const lowerPath = cleanPath.toLowerCase();
+    const hasAllowedExtension = Array.from(ALLOWED_EXTENSIONS).some(ext => lowerPath.endsWith(ext));
+    if (!hasAllowedExtension) { skippedUnsupported++; continue; }
+
+    const isInSkipDir = Array.from(SKIP_DIRS).some(dir =>
+      lowerPath.startsWith(`${dir}/`) || lowerPath.includes(`/${dir}/`)
+    );
+    if (isInSkipDir) { skippedDir++; continue; }
+
     candidates.push({ path: cleanPath, zipFile: file });
   }
 
@@ -183,18 +209,23 @@ async function fetchAndExtractZip(zipUrl: string, authHeaders: HeadersInit): Pro
   for (const { path, zipFile } of candidates) {
     if (results.length >= MAX_FILES) break;
     const content = await zipFile.async("string");
-    if (content.length > MAX_FILE_SIZE_BYTES) continue;
+    if (content.length > MAX_FILE_SIZE_BYTES) { skippedLarge++; continue; }
     results.push({ path, content });
   }
 
-  return results;
+  const truncatedByLimit = Math.max(0, candidates.length - skippedLarge - results.length);
+
+  return {
+    files: results,
+    stats: { totalInZip, skippedUnsupported, skippedLarge, skippedDir, truncatedByLimit },
+  };
 }
 
 // ---------------------------------------------------------------------------
 // GitHub provider
 // ---------------------------------------------------------------------------
 
-async function fetchGithubRepo(owner: string, repo: string, ref?: string): Promise<FetchedFile[]> {
+async function fetchGithubRepo(owner: string, repo: string, ref?: string): Promise<FetchResult> {
   const token = getGithubToken();
   const headers: HeadersInit = { "Accept": "application/vnd.github.v3+json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -212,18 +243,18 @@ async function fetchGithubRepo(owner: string, repo: string, ref?: string): Promi
   }
 
   // Try branch, then tag
-  let files = await fetchAndExtractZip(
+  let result = await fetchAndExtractZip(
     `https://github.com/${owner}/${repo}/archive/refs/heads/${targetRef}.zip`, headers
   );
-  if (files.length === 0 && ref) {
-    files = await fetchAndExtractZip(
+  if ((!result || result.files.length === 0) && ref) {
+    result = await fetchAndExtractZip(
       `https://github.com/${owner}/${repo}/archive/refs/tags/${targetRef}.zip`, headers
     );
   }
-  if (files.length === 0) {
+  if (!result || result.files.length === 0) {
     throw new Error(`Failed to download GitHub repository for ref "${targetRef}".`);
   }
-  return files;
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -234,7 +265,7 @@ function getGitlabToken(): string | undefined {
   return process.env.GITLAB_TOKEN || undefined;
 }
 
-async function fetchGitlabRepo(owner: string, repo: string, ref?: string): Promise<FetchedFile[]> {
+async function fetchGitlabRepo(owner: string, repo: string, ref?: string): Promise<FetchResult> {
   const token = getGitlabToken();
   const projectId = encodeURIComponent(`${owner}/${repo}`);
   const headers: HeadersInit = {};
@@ -252,11 +283,11 @@ async function fetchGitlabRepo(owner: string, repo: string, ref?: string): Promi
   }
 
   const archiveUrl = `https://gitlab.com/api/v4/projects/${projectId}/repository/archive.zip?sha=${encodeURIComponent(targetRef)}`;
-  const files = await fetchAndExtractZip(archiveUrl, headers);
-  if (files.length === 0) {
+  const result = await fetchAndExtractZip(archiveUrl, headers);
+  if (!result || result.files.length === 0) {
     throw new Error(`Failed to download GitLab repository for ref "${targetRef}".`);
   }
-  return files;
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -270,7 +301,7 @@ function getBitbucketCredentials(): { username?: string; appPassword?: string } 
   };
 }
 
-async function fetchBitbucketRepo(owner: string, repo: string, ref?: string): Promise<FetchedFile[]> {
+async function fetchBitbucketRepo(owner: string, repo: string, ref?: string): Promise<FetchResult> {
   const { username, appPassword } = getBitbucketCredentials();
   const headers: HeadersInit = {};
   if (username && appPassword) {
@@ -289,18 +320,18 @@ async function fetchBitbucketRepo(owner: string, repo: string, ref?: string): Pr
   }
 
   const archiveUrl = `https://bitbucket.org/${owner}/${repo}/get/${targetRef}.zip`;
-  const files = await fetchAndExtractZip(archiveUrl, headers);
-  if (files.length === 0) {
+  const result = await fetchAndExtractZip(archiveUrl, headers);
+  if (!result || result.files.length === 0) {
     throw new Error(`Failed to download Bitbucket repository for ref "${targetRef}".`);
   }
-  return files;
+  return result;
 }
 
 // ---------------------------------------------------------------------------
 // Unified fetch function
 // ---------------------------------------------------------------------------
 
-export async function fetchRepoFiles(parsed: ParsedRepoUrl): Promise<FetchedFile[]> {
+export async function fetchRepoFiles(parsed: ParsedRepoUrl): Promise<FetchResult> {
   switch (parsed.platform) {
     case "github":
       return fetchGithubRepo(parsed.owner, parsed.repo, parsed.ref);

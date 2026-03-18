@@ -18,11 +18,16 @@ export interface StepStatus {
 export interface SSEProgressEvent {
   step: ProcessingStep;
   message?: string;
+  detail?: string;       // Sub-step detail shown below the main message
   repo_id?: string;
   file_count?: number;
   chunk_count?: number;
   processed?: number;
   total?: number;
+  skipped_large?: number;      // Files skipped for being >100KB
+  skipped_unsupported?: number; // Files skipped for unsupported extension
+  skipped_dir?: number;        // Files skipped for being in excluded dirs
+  percent?: number;            // Fine-grained progress 0-100
 }
 
 export interface ChatMessage {

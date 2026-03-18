@@ -11,6 +11,7 @@ export interface Step {
   id: string;
   label: string;
   status: StepStatus;
+  detail?: string;  // Sub-step detail like skip reasons
 }
 
 interface ProcessingScreenProps {
@@ -80,8 +81,11 @@ export function ProcessingScreen({ steps, progress, repoName }: ProcessingScreen
                 )}>
                   {step.label}
                 </span>
-                {step.status === "processing" && (
-                  <span className="text-[10px] font-bold text-primary/60 uppercase tracking-widest animate-pulse mt-0.5">Processing Logic</span>
+                {step.status === "processing" && !step.detail && (
+                  <span className="text-[10px] font-bold text-primary/60 uppercase tracking-widest animate-pulse mt-0.5">Processing</span>
+                )}
+                {step.detail && (step.status === "processing" || step.status === "complete") && (
+                  <span className="text-[10px] font-medium text-muted-foreground/70 mt-0.5 truncate max-w-[300px]">{step.detail}</span>
                 )}
               </div>
             </div>

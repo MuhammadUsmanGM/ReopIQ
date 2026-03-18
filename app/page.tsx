@@ -30,6 +30,9 @@ export default function Home() {
     // Load recent repos from local storage
     const stored = localStorage.getItem("codelens_recent");
     if (stored) setRecentRepos(JSON.parse(stored));
+
+    // Pre-warm the embedding model in the background
+    fetch("/api/warmup").catch(() => {});
   }, []);
 
   const saveToRecent = (repoId: string) => {
@@ -179,7 +182,7 @@ export default function Home() {
             const stepOrder = ["validating", "fetching", "filtering", "chunking", "embedding", "complete"];
             const currentIdx = stepOrder.indexOf(event.step);
 
-            updateProgress(event.step, currentIdx);
+            updateProgress(event.step, currentIdx, event.percent, event.detail);
 
             if (event.step === "complete") {
               saveToRecent(event.repo_id);
@@ -224,22 +227,25 @@ export default function Home() {
     }
   };
 
-  const updateProgress = (step: string, index: number) => {
-    // Basic progress mapping
-    const progressMap: Record<string, number> = {
-      validating: 10,
-      fetching: 25,
-      filtering: 45,
-      chunking: 70,
-      embedding: 90,
-      complete: 100
-    };
-
-    if (progressMap[step]) setProgress(progressMap[step]);
+  const updateProgress = (step: string, index: number, percent?: number, detail?: string) => {
+    // Use fine-grained percent from server if available, else fall back to step-based milestones
+    if (percent !== undefined && percent > 0) {
+      setProgress(percent);
+    } else {
+      const progressMap: Record<string, number> = {
+        validating: 10,
+        fetching: 25,
+        filtering: 45,
+        chunking: 70,
+        embedding: 90,
+        complete: 100
+      };
+      if (progressMap[step]) setProgress(progressMap[step]);
+    }
 
     setSteps(prev => prev.map((s, idx) => {
       if (idx < index) return { ...s, status: "complete" as const };
-      if (idx === index) return { ...s, status: "processing" as const };
+      if (idx === index) return { ...s, status: "processing" as const, detail };
       return s;
     }));
   };

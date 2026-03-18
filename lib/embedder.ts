@@ -48,6 +48,11 @@ export async function embedTexts(texts: string[], onProgress?: (current: number,
   return embeddings;
 }
 
+/** Pre-load the embedding model so the first real call is fast. */
+export async function warmupModel(): Promise<void> {
+  await getExtractor();
+}
+
 export async function embedQuery(query: string): Promise<number[]> {
   const extract = await getExtractor();
   const output = await extract(query, {
