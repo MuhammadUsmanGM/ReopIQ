@@ -26,6 +26,7 @@
   },
   "files": [
     "bin/",
+    "bin/postinstall.mjs",
     "app/",
     "components/",
     "hooks/",
@@ -44,6 +45,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "postinstall": "node ./bin/postinstall.mjs",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
