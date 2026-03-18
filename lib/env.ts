@@ -3,17 +3,17 @@ import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 
-let _envLoaded = false;
-
-/** Load ~/.codelens/.env into process.env (won't overwrite existing vars) */
+/** Load ~/.codelens/.env into process.env.
+ * Always re-reads from disk so tokens saved via the Settings UI
+ * are picked up without requiring a server restart.
+ */
 export function loadCodeLensEnv() {
-  if (_envLoaded) return;
-  _envLoaded = true;
   const envPath = join(homedir(), ".codelens", ".env");
   if (!existsSync(envPath)) return;
   for (const line of readFileSync(envPath, "utf-8").split("\n")) {
     const m = line.match(/^([^#=]+)=(.*)$/);
-    if (m && !process.env[m[1].trim()]) {
+    // Always overwrite so updates via the Settings UI take effect immediately
+    if (m) {
       process.env[m[1].trim()] = m[2].trim();
     }
   }

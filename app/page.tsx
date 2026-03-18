@@ -159,14 +159,19 @@ export default function Home() {
       const decoder = new TextDecoder();
       let buffer = "";
       let streamError: string | null = null;
+      let redirectRepoId: string | null = null;
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
+        if (value) {
+          buffer += decoder.decode(value, { stream: !done });
+        }
+
+        // Process all complete events in the buffer
         const lines = buffer.split("\n\n");
-        buffer = lines.pop() || "";
+        // Only keep the last partial chunk in the buffer if not done
+        buffer = done ? "" : (lines.pop() || "");
 
         for (const line of lines) {
           const cleanLine = line.trim();
@@ -181,38 +186,31 @@ export default function Home() {
             }
 
             const stepOrder = ["validating", "fetching", "filtering", "chunking", "embedding", "complete"];
-            // Ensure even the "complete" step updates UI before redirect
             const currentIdx = stepOrder.indexOf(event.step);
             updateProgress(event.step, currentIdx, event.percent, event.detail);
 
             if (event.step === "complete") {
               const repoId = event.repo_id;
               if (!repoId) {
-                console.error("Neural completion event missing repoId", event);
                 streamError = "Neural link completed but repository ID is missing.";
                 break;
               }
-
               saveToRecent(repoId);
-              toast.success("Neural link established! Data indexed.", {
-                duration: 5000
-              });
-
-              // Small delay to ensure state and toast are visible before transition
-              setTimeout(() => {
-                router.push(`/chat/${encodeURIComponent(repoId)}`);
-              }, 800);
-              
-              // We return here to stop the processing loop
-              return;
+              redirectRepoId = repoId;
             }
           } catch (e) {
             console.error("Neural SSE Parse Error:", e, "Line:", line);
           }
         }
 
-        // Break out of the read loop if we got a stream error
-        if (streamError) break;
+        if (streamError || done) break;
+      }
+
+      // Execute redirect after the loop fully exits — avoids async timing issues
+      if (redirectRepoId) {
+        toast.success("Neural link established! Data indexed.", { duration: 5000 });
+        router.push(`/chat/${encodeURIComponent(redirectRepoId)}`);
+        return;
       }
 
       // If the stream sent an error event, throw it to the outer catch

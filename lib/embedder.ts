@@ -1,26 +1,47 @@
-import { pipeline, env } from "@xenova/transformers";
+import { pipeline } from "@xenova/transformers";
 import { EMBEDDING_MODEL, EMBEDDING_BATCH_SIZE } from "./constants";
 import { loadCodeLensEnv, getHfToken } from "./env";
 
 let extractor: any = null;
+let _patchedFetch = false;
 
-async function getExtractor() {
-  if (!extractor) {
-    loadCodeLensEnv();
-    const token = getHfToken();
-
-    // Force authenticated requests if a token is present
-    if (token) {
-      // @ts-ignore - Directly override fetchInit to pass headers
-      env.fetchInit = {
+/** Patch globalThis.fetch to inject HF_TOKEN into every HuggingFace request.
+ * This is more reliable than env.fetchInit which is not a valid property
+ * in @xenova/transformers v2.x at runtime.
+ */
+function patchFetchWithToken(token: string) {
+  if (_patchedFetch) return;
+  _patchedFetch = true;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = input.toString();
+    if (url.includes("huggingface.co")) {
+      init = {
+        ...init,
         headers: {
+          ...(init?.headers || {}),
           Authorization: `Bearer ${token}`,
         },
       };
-      // Ensure we allow remote model fetching
-      env.allowRemoteModels = true;
     }
+    return originalFetch(input as any, init);
+  };
+}
 
+async function getExtractor() {
+  // Always reload env so Settings UI changes are picked up without restart
+  loadCodeLensEnv();
+  const token = getHfToken();
+
+  if (token) {
+    patchFetchWithToken(token);
+    // Reset extractor if we now have a token (e.g. token was added after first failed attempt)
+    if (!extractor) {
+      extractor = null;
+    }
+  }
+
+  if (!extractor) {
     extractor = await pipeline("feature-extraction", EMBEDDING_MODEL, {
       quantized: true,
     });
