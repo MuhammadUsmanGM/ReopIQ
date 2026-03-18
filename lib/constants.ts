@@ -1,11 +1,37 @@
 // lib/constants.ts
 
 export const ALLOWED_EXTENSIONS = new Set([
-  ".py", ".ts", ".tsx", ".js", ".jsx",
-  ".java", ".go", ".rs", ".cpp", ".c",
-  ".h", ".hpp", ".md", ".json", ".yaml",
-  ".yml", ".toml", ".sql", ".css", ".html",
-  ".env.example", ".sh"
+  // JavaScript / TypeScript
+  ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs",
+  // Python
+  ".py",
+  // Java / JVM
+  ".java", ".kt", ".kts", ".scala",
+  // C / C++
+  ".c", ".h", ".cpp", ".hpp", ".cc", ".cxx",
+  // Systems
+  ".go", ".rs",
+  // Mobile
+  ".swift", ".dart",
+  // Web frameworks
+  ".vue", ".svelte",
+  // .NET
+  ".cs",
+  // Scripting
+  ".rb", ".php", ".lua", ".r", ".R",
+  // Elixir / Erlang
+  ".ex", ".exs", ".erl",
+  // Schemas & query
+  ".sql", ".graphql", ".gql", ".proto",
+  // Config & IaC
+  ".json", ".yaml", ".yml", ".toml", ".xml", ".tf", ".hcl",
+  // ORM / DB
+  ".prisma",
+  // Markup & style
+  ".md", ".css", ".scss", ".html",
+  // Shell & misc
+  ".sh", ".bash", ".zsh", ".dockerfile",
+  ".env.example",
 ]);
 
 export const SKIP_DIRS = new Set([
