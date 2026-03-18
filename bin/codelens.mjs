@@ -78,12 +78,20 @@ async function ensureEnv() {
     process.env[key] = value.trim();
   }
 
-  // Optional: GITHUB_TOKEN
+  // Optional: GITHUB_TOKEN & HF_TOKEN
   if (!existing.GITHUB_TOKEN && !process.env.GITHUB_TOKEN) {
     const gh = await prompt(rl, "  GitHub Token (optional, Enter to skip): ");
     if (gh.trim()) {
       existing.GITHUB_TOKEN = gh.trim();
       process.env.GITHUB_TOKEN = gh.trim();
+    }
+  }
+
+  if (!existing.HF_TOKEN && !process.env.HF_TOKEN) {
+    const hf = await prompt(rl, "  Hugging Face Token (optional, Enter to skip): ");
+    if (hf.trim()) {
+      existing.HF_TOKEN = hf.trim();
+      process.env.HF_TOKEN = hf.trim();
     }
   }
 

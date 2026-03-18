@@ -1,11 +1,15 @@
-// lib/embedder.ts
 import { pipeline } from "@xenova/transformers";
 import { EMBEDDING_MODEL, EMBEDDING_BATCH_SIZE } from "./constants";
+import { loadCodeLensEnv } from "./env";
 
 let extractor: any = null;
 
 async function getExtractor() {
   if (!extractor) {
+    // Ensuring the latest env is loaded into process.env before initialization.
+    // Transformers.js automatically picks up process.env.HF_TOKEN on the server.
+    loadCodeLensEnv();
+
     extractor = await pipeline("feature-extraction", EMBEDDING_MODEL, {
       quantized: true,
     });

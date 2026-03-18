@@ -35,7 +35,7 @@ function saveEnv(env: Record<string, string>) {
 export async function GET() {
   const env = loadEnv();
   // Also check process.env for keys set via .env file
-  const keys = ["GOOGLE_API_KEY", "QDRANT_URL", "QDRANT_API_KEY", "GITHUB_TOKEN"];
+  const keys = ["GOOGLE_API_KEY", "QDRANT_URL", "QDRANT_API_KEY", "GITHUB_TOKEN", "GEMINI_MODEL", "HF_TOKEN"];
   const result: Record<string, { set: boolean; masked: string; value?: string }> = {};
 
   for (const key of keys) {

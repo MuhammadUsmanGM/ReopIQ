@@ -6,7 +6,7 @@ import { homedir } from "os";
 let _envLoaded = false;
 
 /** Load ~/.codelens/.env into process.env (won't overwrite existing vars) */
-function loadCodeLensEnv() {
+export function loadCodeLensEnv() {
   if (_envLoaded) return;
   _envLoaded = true;
   const envPath = join(homedir(), ".codelens", ".env");
@@ -49,4 +49,9 @@ export function getGithubToken(): string | undefined {
 export function getGeminiModel(): string {
   loadCodeLensEnv();
   return process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+}
+
+export function getHfToken(): string | undefined {
+  loadCodeLensEnv();
+  return process.env.HF_TOKEN || undefined;
 }
