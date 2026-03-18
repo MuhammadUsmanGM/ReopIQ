@@ -198,6 +198,23 @@ export async function getAllChunks(repoId: string): Promise<RepoChunk[]> {
   return chunks;
 }
 
+/** Delete all points matching a given filePath (for incremental re-indexing) */
+export async function deletePointsByFile(repoId: string, filePath: string): Promise<void> {
+  const collectionName = getCollectionName(repoId);
+  try {
+    await getQdrantClient().delete(collectionName, {
+      wait: true,
+      filter: {
+        must: [
+          { key: "filePath", match: { value: filePath } },
+        ],
+      },
+    });
+  } catch (error) {
+    // Silent fail — collection might not exist yet
+  }
+}
+
 export async function fetchFileChunks(repoId: string, filePath: string): Promise<RepoChunk[]> {
   const collectionName = getCollectionName(repoId);
   const chunks: RepoChunk[] = [];

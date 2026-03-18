@@ -48,36 +48,55 @@ export default function Home() {
 
     let toastId: string | number = "";
     try {
-      // 1. Parse & validate URL (supports owner/repo, owner/repo@branch, owner/repo#tag, full GitHub URLs with /tree/branch)
-      let cleanUrl = url.replace(/^https?:\/\//, "").replace(/^github\.com\//, "");
+      // 1. Parse & validate URL (GitHub, GitLab, Bitbucket — with branch/tag support)
+      let cleanUrl = url.trim().replace(/\.git$/, "").replace(/\/$/, "");
+      let stripped = cleanUrl.replace(/^https?:\/\//, "");
+
+      // Detect platform
+      let platform: "github" | "gitlab" | "bitbucket" = "github";
+      if (stripped.includes("gitlab.com") || stripped.includes("gitlab")) platform = "gitlab";
+      if (stripped.includes("bitbucket.org") || stripped.includes("bitbucket")) platform = "bitbucket";
+
+      // Strip domain
+      stripped = stripped
+        .replace(/^github\.com\//, "")
+        .replace(/^gitlab\.com\//, "")
+        .replace(/^bitbucket\.org\//, "");
+
+      // Extract ref from URL patterns
       let ref: string | undefined;
 
-      // Handle /tree/branch-name in full GitHub URLs
-      const treeParts = cleanUrl.split("/tree/");
-      if (treeParts.length === 2) {
-        cleanUrl = treeParts[0];
-        ref = treeParts[1].replace(/\/$/, "");
+      // GitHub /tree/branch, GitLab /-/tree/branch, Bitbucket /src/branch
+      const branchPatterns = [
+        /^([^/]+\/[^/]+)\/tree\/(.+)$/,
+        /^([^/]+\/[^/]+)\/-\/tree\/(.+)$/,
+        /^([^/]+\/[^/]+)\/src\/(.+)$/,
+      ];
+      for (const pattern of branchPatterns) {
+        const match = stripped.match(pattern);
+        if (match) { stripped = match[1]; ref = match[2]; break; }
       }
 
-      // Handle @branch syntax
-      if (!ref && cleanUrl.includes("@")) {
-        const [base, branchPart] = cleanUrl.split("@");
-        cleanUrl = base;
+      // @branch or #tag
+      if (!ref && stripped.includes("@")) {
+        const [base, branchPart] = stripped.split("@");
+        stripped = base;
         ref = branchPart;
       }
-
-      // Handle #tag syntax
-      if (!ref && cleanUrl.includes("#")) {
-        const [base, tagPart] = cleanUrl.split("#");
-        cleanUrl = base;
+      if (!ref && stripped.includes("#")) {
+        const [base, tagPart] = stripped.split("#");
+        stripped = base;
         ref = tagPart;
       }
 
-      const parts = cleanUrl.split("/").filter(Boolean);
+      const parts = stripped.split("/").filter(Boolean);
       if (parts.length < 2 || !/^[a-zA-Z0-9._-]+$/.test(parts[0]) || !/^[a-zA-Z0-9._-]+$/.test(parts[1])) {
-        throw new Error("Please enter a valid GitHub repository URL (e.g. github.com/owner/repo or owner/repo@branch)");
+        throw new Error("Please enter a valid repository URL (e.g. github.com/owner/repo, gitlab.com/owner/repo, or bitbucket.org/owner/repo)");
       }
-      const baseId = `${parts[0]}/${parts[1].replace(/\.git$/, "")}`.toLowerCase();
+
+      const baseId = platform === "github"
+        ? `${parts[0]}/${parts[1]}`.toLowerCase()
+        : `${platform}:${parts[0]}/${parts[1]}`.toLowerCase();
       const repoId = ref ? `${baseId}@${ref.toLowerCase()}` : baseId;
 
       toastId = toast.loading("Checking neural index...", {

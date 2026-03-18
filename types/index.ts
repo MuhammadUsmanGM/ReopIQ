@@ -51,6 +51,7 @@ export interface QdrantPoint {
     filePath: string;
     language: string;
     type?: string;
+    fileHash?: string;
   };
 }
 
@@ -60,6 +61,8 @@ export interface RepoMetadata {
   fileTree: string;
   fileCount: number;
   chunkCount: number;
+  /** Map of filePath → content hash for incremental indexing */
+  fileHashes?: Record<string, string>;
 }
 
 export interface HybridRetrievalResult {
