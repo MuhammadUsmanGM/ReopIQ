@@ -110,6 +110,48 @@ export async function fetchFilesInParallel(owner: string, repo: string, files: G
   return results;
 }
 
+/** Priority tiers for file sorting — lower number = indexed first */
+function getFilePriority(path: string): number {
+  const lower = path.toLowerCase();
+  const fileName = lower.split("/").pop() || "";
+  const depth = path.split("/").length - 1;
+
+  // Tier 0: Root entry points & config
+  if (depth === 0) {
+    if (fileName.startsWith("readme")) return 0;
+    if (["package.json", "cargo.toml", "go.mod", "pyproject.toml", "setup.py",
+         "build.gradle", "pom.xml", "gemfile", "mix.exs", "pubspec.yaml",
+         "composer.json", "cmakelists.txt"].includes(fileName)) return 0;
+    if (["dockerfile", "docker-compose.yml", "docker-compose.yaml",
+         ".env.example", "makefile"].includes(fileName)) return 1;
+  }
+
+  // Tier 1: Entry point source files
+  if (fileName === "main.ts" || fileName === "main.tsx" || fileName === "main.py" ||
+      fileName === "main.go" || fileName === "main.rs" || fileName === "main.java" ||
+      fileName === "main.dart" || fileName === "main.kt" || fileName === "main.scala" ||
+      fileName === "app.ts" || fileName === "app.tsx" || fileName === "app.py" ||
+      fileName === "app.js" || fileName === "app.jsx" ||
+      fileName === "index.ts" || fileName === "index.tsx" ||
+      fileName === "index.js" || fileName === "index.jsx" ||
+      fileName === "mod.rs" || fileName === "lib.rs") return 1;
+
+  // Tier 2: Config, schema, and route files
+  if (fileName.includes("config") || fileName.includes("route") ||
+      fileName.includes("schema") || fileName.includes("migration") ||
+      fileName.endsWith(".prisma") || fileName.endsWith(".proto") ||
+      fileName.endsWith(".graphql") || fileName.endsWith(".gql")) return 2;
+
+  // Tier 3: Source files at shallow depth (likely core code)
+  if (depth <= 2) return 3;
+
+  // Tier 4: Source files deeper in the tree
+  if (depth <= 4) return 4;
+
+  // Tier 5: Everything else (deep nested, tests, etc.)
+  return 5;
+}
+
 export async function fetchRepoAsZip(owner: string, repo: string): Promise<{ path: string; content: string }[]> {
   const token = getGithubToken();
   const headers: HeadersInit = {
@@ -142,18 +184,16 @@ export async function fetchRepoAsZip(owner: string, repo: string): Promise<{ pat
   }
   const zip = await JSZip.loadAsync(buffer);
 
-  const results: { path: string; content: string }[] = [];
-  let fileCount = 0;
-
   // Derive root prefix from first ZIP entry (GitHub zips always have repo-branch/ prefix)
   const firstPath = Object.keys(zip.files)[0];
   const rootPrefix = firstPath ? firstPath.split("/")[0] + "/" : "";
 
+  // Collect all valid files first
+  const candidates: { path: string; zipFile: JSZip.JSZipObject }[] = [];
+
   for (const [path, file] of Object.entries(zip.files)) {
     if (file.dir) continue;
-    if (fileCount >= MAX_FILES) break;
 
-    // Remove the root folder prefix from path
     const cleanPath = rootPrefix ? path.replace(rootPrefix, "") : path;
     const lowerPath = cleanPath.toLowerCase();
 
@@ -162,16 +202,27 @@ export async function fetchRepoAsZip(owner: string, repo: string): Promise<{ pat
     if (!hasAllowedExtension) continue;
 
     // Skip dirs
-    const isInSkipDir = Array.from(SKIP_DIRS).some(dir => 
+    const isInSkipDir = Array.from(SKIP_DIRS).some(dir =>
       lowerPath.startsWith(`${dir}/`) || lowerPath.includes(`/${dir}/`)
     );
     if (isInSkipDir) continue;
 
-    const content = await file.async("string");
+    candidates.push({ path: cleanPath, zipFile: file });
+  }
+
+  // Sort by priority so important files get indexed first when hitting MAX_FILES
+  candidates.sort((a, b) => getFilePriority(a.path) - getFilePriority(b.path));
+
+  // Read file contents up to MAX_FILES
+  const results: { path: string; content: string }[] = [];
+
+  for (const { path, zipFile } of candidates) {
+    if (results.length >= MAX_FILES) break;
+
+    const content = await zipFile.async("string");
     if (content.length > MAX_FILE_SIZE_BYTES) continue;
 
-    results.push({ path: cleanPath, content });
-    fileCount++;
+    results.push({ path, content });
   }
 
   return results;
