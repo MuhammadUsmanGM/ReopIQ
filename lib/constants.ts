@@ -41,11 +41,11 @@ export const SKIP_DIRS = new Set([
   ".idea", ".vscode", "out", ".turbo"
 ]);
 
-export const MAX_FILES = 1500;
-export const MAX_FILE_SIZE_BYTES = 100_000;    // 100KB
+export const MAX_FILES = 3000;
+export const MAX_FILE_SIZE_BYTES = 1_000_000;  // 1MB
 export const CHUNK_SIZE = 1000;
 export const CHUNK_OVERLAP = 200;
-export const EMBEDDING_BATCH_SIZE = 32;
+export const EMBEDDING_BATCH_SIZE = 16;        // Lowered for memory stability
 export const GITHUB_FETCH_CONCURRENCY = 20;
 export const QDRANT_VECTOR_SIZE = 768; // gemini-embedding-001 with MRL dimensionality
 export const RAG_TOP_K = 15;
