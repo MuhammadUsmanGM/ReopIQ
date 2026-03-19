@@ -324,7 +324,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                   <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
                 </button>
                 <p className="text-[9px] text-center text-muted-foreground/40 mt-4 font-bold uppercase tracking-widest">
-                  Encryption Layer: AES-256-GCM Local
+                  Stored locally in ~/.codelens/.env
                 </p>
               </div>
             )}

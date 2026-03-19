@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import crypto from "crypto";
 import { parseRepoUrl, fetchRepoFiles, buildRepoId } from "@/lib/providers";
 import { chunkFilesStructural } from "@/lib/ast-chunker";
-import { embedTexts } from "@/lib/embedder";
+import { embedTexts, getActiveProvider } from "@/lib/embedder";
 import {
   createCollection,
   collectionExists,
@@ -208,6 +208,7 @@ export async function POST(req: NextRequest) {
           fileCount: filesWithContent.length,
           chunkCount: chunks.length,
           fileHashes: currentHashes,
+          embeddingProvider: getActiveProvider(),
         });
 
         // 11. Complete

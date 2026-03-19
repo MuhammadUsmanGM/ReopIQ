@@ -102,8 +102,9 @@ export function parseRepoUrl(url: string): ParsedRepoUrl {
 
 function detectPlatform(url: string): Platform {
   const lower = url.toLowerCase();
-  if (lower.includes("gitlab.com") || lower.includes("gitlab")) return "gitlab";
-  if (lower.includes("bitbucket.org") || lower.includes("bitbucket")) return "bitbucket";
+  // Only match on domain to avoid misdetecting repos with "gitlab"/"bitbucket" in their name
+  if (lower.includes("gitlab.com/")) return "gitlab";
+  if (lower.includes("bitbucket.org/")) return "bitbucket";
   return "github"; // default
 }
 

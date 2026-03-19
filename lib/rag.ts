@@ -1,6 +1,6 @@
 // lib/rag.ts
 
-import { embedQuery } from "./embedder";
+import { embedQuery, getActiveProvider } from "./embedder";
 import { searchSimilar, getRepoMetadata, getAllChunks, fetchFileChunks } from "./qdrant";
 import { RAG_TOP_K, RAG_CANDIDATE_MULTIPLIER, FULL_CONTEXT_TOKEN_THRESHOLD } from "./constants";
 import { RepoChunk, HybridRetrievalResult, ChatMessage } from "@/types";
@@ -134,6 +134,16 @@ export async function retrieveHybrid(repoId: string, message: string, history?: 
     }
     const sources = Array.from(new Set(ragChunks.map(c => c.filePath)));
     return { chunks: ragChunks, fileTree: "(file tree unavailable — re-index for full features)", mode: "rag" as const, sources };
+  }
+
+  // Guard: ensure queries use the same embedding provider that indexed the repo
+  const indexedWith = metadata.embeddingProvider;
+  const currentProvider = getActiveProvider();
+  if (indexedWith && indexedWith !== currentProvider) {
+    throw new Error(
+      `This repo was indexed with "${indexedWith}" embeddings but you're now using "${currentProvider}". ` +
+      `Please re-index the repo, or switch back to "${indexedWith}" in Settings.`
+    );
   }
 
   const fileTree = metadata.fileTree;

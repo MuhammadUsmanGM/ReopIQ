@@ -68,6 +68,8 @@ export interface RepoMetadata {
   chunkCount: number;
   /** Map of filePath → content hash for incremental indexing */
   fileHashes?: Record<string, string>;
+  /** Which embedding provider was used to index ("google" | "local") */
+  embeddingProvider?: string;
 }
 
 export interface HybridRetrievalResult {

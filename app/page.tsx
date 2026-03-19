@@ -55,10 +55,10 @@ export default function Home() {
       let cleanUrl = url.trim().replace(/\.git$/, "").replace(/\/$/, "");
       let stripped = cleanUrl.replace(/^https?:\/\//, "");
 
-      // Detect platform
+      // Detect platform (match domain only, not repo names containing "gitlab"/"bitbucket")
       let platform: "github" | "gitlab" | "bitbucket" = "github";
-      if (stripped.includes("gitlab.com") || stripped.includes("gitlab")) platform = "gitlab";
-      if (stripped.includes("bitbucket.org") || stripped.includes("bitbucket")) platform = "bitbucket";
+      if (stripped.startsWith("gitlab.com/")) platform = "gitlab";
+      if (stripped.startsWith("bitbucket.org/")) platform = "bitbucket";
 
       // Strip domain
       stripped = stripped

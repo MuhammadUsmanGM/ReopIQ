@@ -5,6 +5,11 @@ import { loadCodeLensEnv, getHfToken, getGoogleApiKey } from "./env";
 
 // ─── Provider detection ───
 
+/** Returns the currently configured embedding provider. */
+export function getActiveProvider(): "google" | "local" {
+  return getProvider();
+}
+
 function getProvider(): "google" | "local" {
   loadCodeLensEnv();
   const pref = process.env.EMBEDDING_PROVIDER?.toLowerCase();
@@ -25,7 +30,7 @@ async function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function googleEmbedBatch(texts: string[], taskType: string): Promise<number[][]> {
+async function googleEmbedBatch(texts: string[], taskType: string, retries = 0): Promise<number[][]> {
   const apiKey = getGoogleApiKey();
   const response = await fetch(`${GOOGLE_EMBED_URL}?key=${apiKey}`, {
     method: "POST",
@@ -41,11 +46,13 @@ async function googleEmbedBatch(texts: string[], taskType: string): Promise<numb
   });
 
   if (response.status === 429) {
-    // Rate limited — wait and retry
-    const retryAfter = 62; // Google free tier resets per minute
-    console.log(`[embedder] Rate limited, waiting ${retryAfter}s...`);
+    if (retries >= 3) {
+      throw new Error("Embedding API rate limit exceeded after 3 retries. Try again in a few minutes or switch to Local embedding in Settings.");
+    }
+    const retryAfter = 62;
+    console.log(`[embedder] Rate limited, waiting ${retryAfter}s (retry ${retries + 1}/3)...`);
     await sleep(retryAfter * 1000);
-    return googleEmbedBatch(texts, taskType);
+    return googleEmbedBatch(texts, taskType, retries + 1);
   }
 
   if (!response.ok) {

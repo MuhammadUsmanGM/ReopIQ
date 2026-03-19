@@ -11,11 +11,19 @@ function sanitizeUtf8(str: string): string {
 }
 
 let client: QdrantClient | null = null;
+let cachedUrl: string | null = null;
+let cachedApiKey: string | null = null;
 
 export function getQdrantClient() {
+  const { url, apiKey } = getQdrantConfig();
+  // Invalidate cache if credentials changed (e.g. via Settings UI)
+  if (client && (url !== cachedUrl || apiKey !== cachedApiKey)) {
+    client = null;
+  }
   if (!client) {
-    const { url, apiKey } = getQdrantConfig();
     client = new QdrantClient({ url, apiKey });
+    cachedUrl = url;
+    cachedApiKey = apiKey;
   }
   return client;
 }

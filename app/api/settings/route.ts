@@ -62,7 +62,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   const env = loadEnv();
 
-  const ALLOWED_KEYS = ["GOOGLE_API_KEY", "QDRANT_URL", "QDRANT_API_KEY", "GITHUB_TOKEN", "GEMINI_MODEL", "EMBEDDING_PROVIDER"];
+  const ALLOWED_KEYS = ["GOOGLE_API_KEY", "QDRANT_URL", "QDRANT_API_KEY", "GITHUB_TOKEN", "GEMINI_MODEL", "EMBEDDING_PROVIDER", "HF_TOKEN"];
   for (const key of ALLOWED_KEYS) {
     if (body[key] !== undefined && body[key] !== "") {
       env[key] = body[key];
