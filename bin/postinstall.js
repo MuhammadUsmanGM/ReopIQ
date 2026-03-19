@@ -35,6 +35,6 @@ console.log(chalk.cyan("  ║    CODE-LENS SUCCESSFULLY LINKED     ║"));
 console.log(chalk.cyan("  ╚══════════════════════════════════════╝\n"));
 
 console.log(chalk.white("  Launch your architectural autopilot:"));
-console.log(chalk.bold.hex("#FFB300")("\n  ➜ lens\n"));
+console.log(chalk.bold.hex("#FFB300")("\n  ➜ codelens\n"));
 
 console.log(chalk.dim("  ────────────────────────────────────────"));

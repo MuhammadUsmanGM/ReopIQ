@@ -1,5 +1,5 @@
 {
-  "name": "lens-ai",
+  "name": "@muhammadusmangm/codelens",
   "version": "1.0.0",
   "description": "AI-powered codebase analysis — index any repo and chat with it locally",
   "author": "Muhammad Usman <https://github.com/MuhammadUsmanGM>",
@@ -23,7 +23,7 @@
     "node": ">=18.17.0"
   },
   "bin": {
-    "lens": "./bin/codelens.js"
+    "codelens": "./bin/codelens.js"
   },
   "files": [
     "bin/",
