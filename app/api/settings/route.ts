@@ -35,7 +35,7 @@ function saveEnv(env: Record<string, string>) {
 export async function GET() {
   const env = loadEnv();
   // Also check process.env for keys set via .env file
-  const keys = ["GOOGLE_API_KEY", "QDRANT_URL", "QDRANT_API_KEY", "GITHUB_TOKEN", "GEMINI_MODEL", "HF_TOKEN"];
+  const keys = ["GOOGLE_API_KEY", "QDRANT_URL", "QDRANT_API_KEY", "GITHUB_TOKEN", "GEMINI_MODEL", "HF_TOKEN", "EMBEDDING_PROVIDER"];
   const result: Record<string, { set: boolean; masked: string; value?: string }> = {};
 
   for (const key of keys) {
@@ -50,6 +50,10 @@ export async function GET() {
   const model = env["GEMINI_MODEL"] || process.env["GEMINI_MODEL"] || "gemini-2.5-flash-lite";
   result["GEMINI_MODEL"] = { set: true, masked: model, value: model };
 
+  // Handle embedding provider selection
+  const embProvider = env["EMBEDDING_PROVIDER"] || process.env["EMBEDDING_PROVIDER"] || "google";
+  result["EMBEDDING_PROVIDER"] = { set: true, masked: embProvider, value: embProvider };
+
   return Response.json(result);
 }
 
@@ -58,7 +62,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   const env = loadEnv();
 
-  const ALLOWED_KEYS = ["GOOGLE_API_KEY", "QDRANT_URL", "QDRANT_API_KEY", "GITHUB_TOKEN", "GEMINI_MODEL"];
+  const ALLOWED_KEYS = ["GOOGLE_API_KEY", "QDRANT_URL", "QDRANT_API_KEY", "GITHUB_TOKEN", "GEMINI_MODEL", "EMBEDDING_PROVIDER"];
   for (const key of ALLOWED_KEYS) {
     if (body[key] !== undefined && body[key] !== "") {
       env[key] = body[key];

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Eye, EyeOff, Check, Loader2, Cpu, Shield, Globe, Key } from "lucide-react";
+import { X, Eye, EyeOff, Check, Loader2, Cpu, Shield, Globe, Key, Zap, HardDrive } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -13,6 +13,7 @@ interface SettingsModalProps {
 interface KeyState {
   set: boolean;
   masked: string;
+  value?: string;
 }
 
 const FIELDS = [
@@ -21,6 +22,11 @@ const FIELDS = [
   { key: "QDRANT_API_KEY", label: "Qdrant API Key", required: true, placeholder: "Your Qdrant API key", icon: Shield },
   { key: "GITHUB_TOKEN", label: "GitHub Token", required: false, placeholder: "ghp_... (optional)", icon: Key },
   { key: "HF_TOKEN", label: "Hugging Face Token", required: false, placeholder: "hf_... (optional)", icon: Shield },
+];
+
+const EMBED_PROVIDERS = [
+  { id: "google", name: "Google API", description: "Fast cloud embeddings (recommended)", icon: Zap },
+  { id: "local", name: "Local (Xenova)", description: "Offline, no API limits, slower on CPU", icon: HardDrive },
 ];
 
 const MODELS = [
@@ -33,6 +39,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const [keys, setKeys] = useState<Record<string, KeyState>>({});
   const [values, setValues] = useState<Record<string, string>>({});
   const [selectedModel, setSelectedModel] = useState("gemini-2.5-flash-lite");
+  const [embedProvider, setEmbedProvider] = useState("google");
   const [visible, setVisible] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -49,6 +56,9 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
         if (data.GEMINI_MODEL?.masked) {
           setSelectedModel(data.GEMINI_MODEL.masked);
         }
+        if (data.EMBEDDING_PROVIDER?.value) {
+          setEmbedProvider(data.EMBEDDING_PROVIDER.value);
+        }
         setValues({});
         setVisible({});
       })
@@ -57,11 +67,13 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
 
   const handleSave = async () => {
     const toSave: Record<string, string> = {
-      GEMINI_MODEL: selectedModel
+      GEMINI_MODEL: selectedModel,
+      EMBEDDING_PROVIDER: embedProvider,
     };
-    
+
     let hasChanges = false;
     if (selectedModel !== keys.GEMINI_MODEL?.masked) hasChanges = true;
+    if (embedProvider !== keys.EMBEDDING_PROVIDER?.value) hasChanges = true;
 
     for (const { key } of FIELDS) {
       if (values[key]?.trim()) {
@@ -182,6 +194,50 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                     </div>
                   </section>
 
+                  {/* Embedding Provider */}
+                  <section className="space-y-4">
+                    <div className="flex items-center gap-2 mb-2">
+                       <span className="w-1 h-4 bg-cyan-500 rounded-full" />
+                       <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Embedding Engine</h3>
+                    </div>
+                    <div className="grid gap-3">
+                      {EMBED_PROVIDERS.map((provider) => (
+                        <button
+                          key={provider.id}
+                          onClick={() => setEmbedProvider(provider.id)}
+                          className={cn(
+                            "flex items-center gap-4 p-4 rounded-2xl border transition-all text-left group relative overflow-hidden cursor-pointer",
+                            embedProvider === provider.id
+                              ? "bg-cyan-500/10 border-cyan-500/40 shadow-lg shadow-cyan-500/5"
+                              : "bg-muted/10 border-white/5 hover:border-white/10 hover:bg-muted/20"
+                          )}
+                        >
+                          <provider.icon size={18} className={cn(
+                            embedProvider === provider.id ? "text-cyan-500" : "text-muted-foreground/50"
+                          )} />
+                          <div className="flex-1 z-10">
+                            <div className="flex items-center justify-between">
+                              <span className={cn(
+                                "text-sm font-bold tracking-tight",
+                                embedProvider === provider.id ? "text-cyan-400" : "text-foreground/80"
+                              )}>
+                                {provider.name}
+                              </span>
+                              {embedProvider === provider.id && (
+                                <div className="p-1 rounded-full bg-cyan-500 text-white">
+                                  <Check size={10} strokeWidth={4} />
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-1 font-medium">
+                              {provider.description}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+
                   {/* API Keys */}
                   <section className="space-y-6">
                     <div className="flex items-center gap-2 mb-2">
@@ -244,7 +300,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
               <div className="p-8 sticky bottom-0 bg-card/95 backdrop-blur-xl border-t border-white/5 z-20">
                 <button
                   onClick={handleSave}
-                  disabled={saving || (!Object.values(values).some((v) => v?.trim()) && selectedModel === keys.GEMINI_MODEL?.masked)}
+                  disabled={saving || (!Object.values(values).some((v) => v?.trim()) && selectedModel === keys.GEMINI_MODEL?.masked && embedProvider === keys.EMBEDDING_PROVIDER?.value)}
                   className={cn(
                     "w-full py-4 rounded-2xl text-xs font-bold uppercase tracking-[0.2em] transition-all cursor-pointer relative overflow-hidden group shadow-xl",
                     saved

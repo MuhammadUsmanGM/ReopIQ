@@ -32,9 +32,11 @@ export default function ChatPage() {
         }
         const data = await res.json();
         if (data.status === "not_found" || data.status === "reindex_required") {
+          // Clean stale entry from recent repos
+          removeFromRecent(repoId);
           toast.error(data.status === "reindex_required"
             ? "Repository needs re-indexing"
-            : "Repository not indexed yet"
+            : "Repository not indexed — please re-analyze it"
           );
           router.push("/");
           return;
@@ -51,12 +53,24 @@ export default function ChatPage() {
     fetchRepoInfo();
   }, [repoId, router]);
 
+  const removeFromRecent = (id: string) => {
+    try {
+      const stored = localStorage.getItem("codelens_recent");
+      if (stored) {
+        const repos: string[] = JSON.parse(stored);
+        const updated = repos.filter((r) => r !== id);
+        localStorage.setItem("codelens_recent", JSON.stringify(updated));
+      }
+    } catch {}
+  };
+
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
       const res = await fetch(`/api/repo/${encodeURIComponent(repoId)}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
       clearChatHistory(repoId);
+      removeFromRecent(repoId);
       setShowDeleteModal(false);
       toast.success("Repository index and chat history deleted successfully.");
       router.push("/");
